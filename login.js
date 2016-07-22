@@ -52,7 +52,7 @@ exports.login_google = function(cal){
         "NCjF1TLi2CcY6t5mt0ZveuL7", //Client Secret
         "urn:ietf:wg:oauth:2.0:oob"); //Redirect URL
 
-    if(tokens.refresh_token != ""){
+    if(tokens.refresh_token != "" && typeof(tokens.refresh_token) !== "undefined"){
         oauth2Client.setCredentials(tokens);
         oauth2Client.refreshAccessToken(function(err, tokens){
             if(err) console.error(err);
