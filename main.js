@@ -16,12 +16,11 @@ var endpoint;
 var token;
 var ltype = "google";
 
-
 login.login_google(function(data){
     token = data;
     state = "auth";
-    pokemon.coords.latitude = 51.6504997;
-    pokemon.coords.longitude = 5.049445;
+    pokemon.coords.latitude = 48.872610;
+    pokemon.coords.longitude = 2.776761;
     console.log("Logged in with google");
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;
@@ -45,7 +44,7 @@ login.login_google(function(data){
 
 var setLocation = function(latitude, longitude){
     var distance = geolib.getDistance({latitude: latitude, longitude: longitude},pokemon.coords);
-    console.log('moving ' + distance + " meters");
+    // console.log('moving ' + distance + " meters");
     pokemon.coords.latitude = latitude;
     pokemon.coords.longitude = longitude;
 };
@@ -148,13 +147,13 @@ var doSpin = function(){
     }
     console.log('stops left to do ' + left);
 };
-var catchnr = 0;
+// var catchnr = 0;
 var didcatch = false;
 var doCatch = function(){
     if(catchable.length <= 0) return;
-    let tocatch = catchable[catchnr%catchable.length];
+    let tocatch = catchable[0];
     if(typeof(tocatch) == "undefined") return;
-    catchnr++;
+    // catchnr++;
     // console.log(tocatch);
     setLocation(tocatch.latitude, tocatch.longitude);
     pokemon.encounter(endpoint, token, ltype, tocatch, function(data){
@@ -162,7 +161,7 @@ var doCatch = function(){
         // console.log(data);
 
         setLocation(tocatch.latitude, tocatch.longitude);
-        pokemon.catchPokemon(endpoint, token, ltype, data, 2, function(catchdata){
+        pokemon.catchPokemon(endpoint, token, ltype, data, 1, function(catchdata){
             console.log(catchdata);
             if(catchdata.status == "CATCH_SUCCESS"){
                 console.log('Caught ' +data.wild_pokemon.pokemon_data.cp+ " CP " + data.wild_pokemon.pokemon_data.pokemon_id + " got " + catchdata.capture_award.xp +"xp " + catchdata.capture_award.candy[0] +"candy " +catchdata.capture_award.stardust[0] +"dust ");
@@ -170,13 +169,47 @@ var doCatch = function(){
         });
     });
 };
+var donecleanup = false;
+var doCleanup = function(){
+    //Transfer Pokemons
+    pokemon.getPokemons(endpoint, token, ltype, function(data){
+        var byPokemon = {};
+        for(var i=0;i<data.length;i++){
+            if(typeof(byPokemon[data[i].pokemon_id]) === "undefined") byPokemon[data[i].pokemon_id] = [];
+            byPokemon[data[i].pokemon_id].push(data[i])
+        }
+        for(var type in byPokemon){
+            if(byPokemon.hasOwnProperty(type)){
+                byPokemon[type].sort(function (a, b) {
+                    if (a.cp > b.cp) {
+                        return -1;
+                    }
+                    if (a.cp < b.cp) {
+                        return 1;
+                    }
+                    // a must be equal to b
+                    return 0;
+                });
+                for(var i=1;i<byPokemon[type].length;i++){
+                    console.log("Transfering " + byPokemon[type].cp + "CP " + byPokemon[type].pokemon_id);
+                    pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
+                        console.log(data);
+                    });
+                }
+            }
+        }
+    })
+};
 
 setInterval(function(){
     if(state != "endpoint") return;
     //Do spin
     doSpin();
     //Do catch
+    // console.log('nearby: ' + catchable);
     doCatch();
+    //Do Cleanup
+    doCleanup();
     //Do heartbeat
     doHearbeat();
 }, 4000);
