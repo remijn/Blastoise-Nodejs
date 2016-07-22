@@ -191,9 +191,9 @@ var doCleanup = function(){
                     return 0;
                 });
                 for(var i=1;i<byPokemon[type].length;i++){
-                    console.log("Transfering " + byPokemon[type].cp + "CP " + byPokemon[type].pokemon_id);
+                    console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
                     pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
-                        console.log(data);
+                        if(data.result != "SUCCESS") console.log(data);
                     });
                 }
             }
