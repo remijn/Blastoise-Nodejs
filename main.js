@@ -14,14 +14,50 @@ var state = "noauth";
 
 var endpoint;
 var token;
-var ltype = "google";
+var ltype = "pokemon";
+var usr = "dannybevers";
+var pass = "dddddd";
+
+// login.login_pokemon(function(data){
+//     token = data;
+//     console.log(token);
+//     return false;
+//     state = "auth";
+//     // pokemon.coords.latitude = 48.872610; //Disneyland Paris
+//     // pokemon.coords.longitude = 2.776761;
+//     pokemon.coords.latitude = 33.811931;
+//     pokemon.coords.longitude = -117.918996;
+//     console.log("Logged in with pokemon");
+//     pokemon.api_endpoint(token, ltype, function(data){
+//
+//         // endpoint = data;
+//         // state = "endpoint";
+//         // console.log("Got api endpoint");
+//         // pokemon.getProfile(endpoint, token, ltype, function(data){
+//         //     console.log("----PROFILE START----");
+//         //     console.log("User: " + data.player_data.username);
+//         //     console.log("Coin: " + data.player_data.currencies[0].amount);
+//         //     console.log("Dust: " + data.player_data.currencies[1].amount);
+//         //     console.log("----PROFILE END----");
+//         //     doHearbeat();
+//         // });
+//         // pokemon.getPlayerStats(endpoint, token, ltype, function(data){
+//         //     console.log(data);
+//         // })
+//
+//
+//     });
+// });
 
 login.login_google(function(data){
     token = data;
     state = "auth";
+    // pokemon.coords.latitude = 48.872610; //Disneyland Paris
+    // pokemon.coords.longitude = 2.776761;
     pokemon.coords.latitude = 33.811931;
     pokemon.coords.longitude = -117.918996;
     console.log("Logged in with google");
+
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;
         state = "endpoint";
@@ -198,7 +234,18 @@ var doCleanup = function(){
                 }
             }
         }
-    })
+    });
+    //Discard Items
+    pokemon.getItems(endpoint, token, ltype, function(data){
+        for(var itemi in data){
+            let item = data[itemi];
+            if(item.count > 50){
+                pokemon.discardItem(endpoint, token, ltype, item, item.count-50, function(data){
+                    console.log("Discarded " + (item.count-50) + " " + item.item_id);
+                });
+            }
+        }
+    });
 };
 
 setInterval(function(){
