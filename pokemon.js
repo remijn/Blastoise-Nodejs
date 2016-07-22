@@ -172,14 +172,46 @@ exports.getPlayerStats = function(endpoint, access_token, ltype, callback) {
         }
     })
 };
-//Doesn't work yet
+exports.getPokemons = function(endpoint, access_token, ltype, callback){
+    this.getInventory(endpoint, access_token, ltype, function (data) {
+        var pokemons = [];
+        for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
+            var item = data.inventory_delta.inventory_items[itemi];
+            if(typeof(item.inventory_item_data.pokemon_data) !== "undefined" && item.inventory_item_data.pokemon_data.is_egg != true){
+                pokemons.push(item.inventory_item_data.pokemon_data);
+            }
+        }
+        callback(pokemons);
+    })
+};
+exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callback){
+    var id = long.fromString(pokemon.id);
+    var idarr = [id.getHighBitsUnsigned(), id.getLowBitsUnsigned()];
+    var requests = [
+        {
+            request_type: "RELEASE_POKEMON",
+            request_message: proto.serialize({
+                pokemon_id: idarr
+            }, "POGOProtos.Networking.Requests.Messages.ReleasePokemonMessage")
+        }
+    ];
+    fs.writeFileSync('reqcatch.bin', requests[0].request_message);
+
+    this.api_req(endpoint, access_token, requests, ltype, function(data){
+        // console.log(data);
+        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.ReleasePokemonResponse");
+        callback(response);
+    });
+    console.log();
+};
+
 exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, callback){
     var requests = [
         {
             request_type: "CATCH_POKEMON",
             request_message: encounter.serialize({
                 encounter_id: pokemon.wild_pokemon.encounter_id,
-                pokeball: 1,
+                pokeball: ball,
                 normalized_reticle_size: 1.95,
                 spawn_point_guid: pokemon.wild_pokemon.spawnpoint_id,
                 hit_pokemon: true,
@@ -188,7 +220,6 @@ exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, ca
             }, "Catch")
         }
     ];
-    fs.writeFileSync('reqcatch.bin', requests[0].request_message);
 
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
