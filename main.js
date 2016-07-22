@@ -10,6 +10,8 @@ var jar = request.jar();
 var catchable = [];
 var pokestops = [];
 
+var pokemonSettings;
+
 var state = "noauth";
 
 var endpoint;
@@ -72,7 +74,10 @@ login.login_google(function(data){
         });
         pokemon.getPlayerStats(endpoint, token, ltype, function(data){
             console.log(data);
-        })
+        });
+        pokemon.getPokemonSettings(endpoint, token, ltype, function(settings){
+            pokemonSettings = settings;
+        });
 
 
     });
@@ -237,14 +242,60 @@ var doCleanup = function(){
     });
     //Discard Items
     pokemon.getItems(endpoint, token, ltype, function(data){
-        for(var itemi in data){
+        for(var itemi=0;itemi<data.length;itemi++){
             let item = data[itemi];
-            if(item.count > 50){
-                pokemon.discardItem(endpoint, token, ltype, item, item.count-50, function(data){
-                    console.log("Discarded " + (item.count-50) + " " + item.item_id);
+            let discard = item.count > 50?item.count-50:0;
+            if(data.length > itemi-1){
+                switch(item.item_id){
+                    case("ITEM_POTION"):
+                        if(data[itemi+1].item_id == "ITEM_SUPER_POTION")
+                            discard = item.count;
+                        break;
+                    case("ITEM_SUPER_POTION"):
+                        if(data[itemi+1].item_id == "ITEM_HYPER_POTION")
+                            discard = item.count;
+                        break;
+                }
+            }
+
+            if(discard != 0 && typeof(discard) == "number"){
+                pokemon.discardItem(endpoint, token, ltype, item, discard, function(data){
+                    console.log("Discarded " + discard + " " + item.item_id);
                 });
             }
         }
+    });
+    //Evolve pokemon
+    pokemon.getPokemonFamilies(endpoint, token, ltype, function(familydatas){
+        let familydata = familydatas;
+        pokemon.getPokemons(endpoint, token, ltype, function (data) {
+            data.sort(function (a, b) { //Sort by cp, evolve high pokemon if it can
+                if (a.cp > b.cp) {
+                    return -1;
+                }
+                if (a.cp < b.cp) {
+                    return 1;
+                }
+                // a must be equal to b
+                return 0;
+            });
+            for(let pokemoni in data){
+                for(let pokemonsetting in pokemonSettings){
+                    let famliyid =  pokemonSettings[pokemonsetting].family_id;
+                    for(let family in familydata){
+                        if(familydata[family].family_id == famliyid && pokemonSettings[pokemonsetting].pokemon_id == data[pokemoni].pokemon_id){
+                            if(typeof(pokemonSettings[pokemonsetting].candy_to_evolve) === "undefined") break;
+                            if(familydata[family].candy > pokemonSettings[pokemonsetting].candy_to_evolve){
+                                console.log("Evolve " + data[pokemoni].pokemon_id);
+                                pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(data){
+                                    console.log(data);
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        });
     });
 };
 

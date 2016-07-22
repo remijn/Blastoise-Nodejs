@@ -184,6 +184,42 @@ exports.getPokemons = function(endpoint, access_token, ltype, callback){
         callback(pokemons);
     })
 };
+exports.downloadItemTemplates = function(endpoint, access_token, ltype, callback){
+    var requests = [
+        {
+            request_type: "DOWNLOAD_ITEM_TEMPLATES"
+        }
+    ];
+    this.api_req(endpoint, access_token, requests, ltype, function(data){
+        // console.log(data);
+        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.DownloadItemTemplatesResponse");
+        callback(response);
+    });
+};
+exports.getPokemonSettings = function(endpoint, access_token, ltype, callback){
+    this.downloadItemTemplates(endpoint, access_token, ltype, function(data){
+        var pokemons = [];
+        for(var itemi = 0;itemi<data.item_templates.length;itemi++){
+            var item = data.item_templates[itemi];
+            if(typeof(item.pokemon_settings) !== "undefined"){
+                pokemons.push(item.pokemon_settings);
+            }
+        }
+        callback(pokemons);
+    });
+};
+exports.getPokedex = function(endpoint, access_token, ltype, callback){
+    this.getInventory(endpoint, access_token, ltype, function (data) {
+        var pokemons = [];
+        for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
+            var item = data.inventory_delta.inventory_items[itemi];
+            if(typeof(item.inventory_item_data.pokedex_entry) !== "undefined"){
+                pokemons.push(item.inventory_item_data.pokedex_entry);
+            }
+        }
+        callback(pokemons);
+    })
+};
 exports.getItems = function(endpoint, access_token, ltype, callback){
     this.getInventory(endpoint, access_token, ltype, function (data) {
         var items = [];
@@ -196,7 +232,20 @@ exports.getItems = function(endpoint, access_token, ltype, callback){
         callback(items);
     })
 };
+exports.getPokemonFamilies = function(endpoint, access_token, ltype, callback){
+    this.getInventory(endpoint, access_token, ltype, function (data) {
+        var items = [];
+        for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
+            var item = data.inventory_delta.inventory_items[itemi];
+            if(typeof(item.inventory_item_data.pokemon_family) !== "undefined"){
+                items.push(item.inventory_item_data.pokemon_family);
+            }
+        }
+        callback(items);
+    })
+};
 exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callback){
+    if(typeof(pokemon.id) === "undefined") return;
     var id = long.fromString(pokemon.id);
     var idarr = [id.getHighBitsUnsigned(), id.getLowBitsUnsigned()];
     var requests = [
@@ -211,6 +260,21 @@ exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callb
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
         var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.ReleasePokemonResponse");
+        callback(response);
+    });
+};
+exports.evolvePokemon = function(endpoint, access_token, ltype, pokemon, callback){
+    var requests = [
+        {
+            request_type: "EVOLVE_POKEMON",
+            request_message: proto.serialize({
+                pokemon_id: pokemon.id
+            }, "POGOProtos.Networking.Requests.Messages.EvolvePokemonMessage")
+        }
+    ];
+    this.api_req(endpoint, access_token, requests, ltype, function(data){
+        // console.log(data);
+        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EvolvePokemonResponse");
         callback(response);
     });
 };
