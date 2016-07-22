@@ -20,8 +20,8 @@ var ltype = "google";
 login.login_google(function(data){
     token = data;
     state = "auth";
-    pokemon.coords.latitude = 48.872195;
-    pokemon.coords.longitude = 2.775767;
+    pokemon.coords.latitude = 51.6504997;
+    pokemon.coords.longitude = 5.049445;
     console.log("Logged in with google");
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;
