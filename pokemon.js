@@ -184,6 +184,18 @@ exports.getPokemons = function(endpoint, access_token, ltype, callback){
         callback(pokemons);
     })
 };
+exports.getItems = function(endpoint, access_token, ltype, callback){
+    this.getInventory(endpoint, access_token, ltype, function (data) {
+        var items = [];
+        for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
+            var item = data.inventory_delta.inventory_items[itemi];
+            if(typeof(item.inventory_item_data.item) !== "undefined"){
+                items.push(item.inventory_item_data.item);
+            }
+        }
+        callback(items);
+    })
+};
 exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callback){
     var id = long.fromString(pokemon.id);
     var idarr = [id.getHighBitsUnsigned(), id.getLowBitsUnsigned()];
@@ -195,16 +207,29 @@ exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callb
             }, "POGOProtos.Networking.Requests.Messages.ReleasePokemonMessage")
         }
     ];
-    fs.writeFileSync('reqcatch.bin', requests[0].request_message);
 
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
         var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.ReleasePokemonResponse");
         callback(response);
     });
-    console.log();
 };
-
+exports.discardItem = function(endpoint, access_token, ltype, item, count, callback){
+    var requests = [
+        {
+            request_type: "RECYCLE_INVENTORY_ITEM",
+            request_message: proto.serialize({
+                item_id: item.item_id,
+                count: count
+            }, "POGOProtos.Networking.Requests.Messages.RecycleInventoryItemMessage")
+        }
+    ];
+    this.api_req(endpoint, access_token, requests, ltype, function(data){
+        // console.log(data);
+        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
+        callback(response);
+    });
+};
 exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, callback){
     var requests = [
         {

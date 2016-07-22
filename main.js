@@ -19,8 +19,10 @@ var ltype = "google";
 login.login_google(function(data){
     token = data;
     state = "auth";
-    pokemon.coords.latitude = 48.872610;
-    pokemon.coords.longitude = 2.776761;
+    // pokemon.coords.latitude = 48.872610; //Disneyland Paris
+    // pokemon.coords.longitude = 2.776761;
+    pokemon.coords.latitude = 33.811931;
+    pokemon.coords.longitude = -117.918996;
     console.log("Logged in with google");
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;
@@ -198,7 +200,18 @@ var doCleanup = function(){
                 }
             }
         }
-    })
+    });
+    //Discard Items
+    pokemon.getItems(endpoint, token, ltype, function(data){
+        for(var itemi in data){
+            let item = data[itemi];
+            if(item.count > 50){
+                pokemon.discardItem(endpoint, token, ltype, item, item.count-50, function(data){
+                    console.log("Discarded " + (item.count-50) + " " + item.item_id);
+                });
+            }
+        }
+    });
 };
 
 setInterval(function(){
