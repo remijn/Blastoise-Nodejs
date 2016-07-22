@@ -1,0 +1,17 @@
+{
+  "name": "Blastoise-Nodejs",
+  "version": "0.0.1",
+  "main": "main.js",
+  "author": "Nick Remijn",
+  "dependencies": {
+    "protobufjs": "*",
+    "request": "*",
+    "googleapis": "*",
+    "long": "*",
+    "bytebuffer": "*",
+    "pokemongo-protobuf": "*",
+    "node-protobuf": "*",
+    "s2geometry-node": "*",
+    "geolib": "*"
+  }
+}

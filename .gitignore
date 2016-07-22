@@ -1,0 +1,6 @@
+node_modules/
+Python/
+*.bin
+apk/
+tokens.json
+.idea/
