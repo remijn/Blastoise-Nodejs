@@ -302,7 +302,7 @@ exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, ca
                 encounter_id: pokemon.wild_pokemon.encounter_id,
                 pokeball: ball,
                 normalized_reticle_size: 1.95,
-                spawn_point_guid: pokemon.wild_pokemon.spawnpoint_id,
+                spawn_point_guid: pokemon.wild_pokemon.spawn_point_id,
                 hit_pokemon: true,
                 spin_modifier: 1,
                 normalized_hit_position: 1,
@@ -322,7 +322,7 @@ exports.encounter = function(endpoint, access_token, ltype, pokemon, callback){
     spawn.writeString("test");
     let encountermessage = {
         encounter_id: pokemon.encounter_id,
-        spawn: pokemon.spawnpoint_id,
+        spawn: pokemon.spawn_point_id,
         player_latitude: this.coords.latitude,
         player_longitude: this.coords.longitude,
     };
