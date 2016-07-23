@@ -142,10 +142,23 @@ exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callbac
         }
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
-            // proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
+        if(typeof(data.returns) !== 'undefined')
+        {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
+            if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined')
+            {
+                proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
 
-        callback(response);
+                callback(response);
+            }
+            else {
+                console.log(data);
+                console.log(response);
+            }
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.getInventory = function(endpoint, access_token, ltype, callback){

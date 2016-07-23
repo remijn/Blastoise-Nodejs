@@ -290,15 +290,35 @@ var doCleanup = function(){
                                 {
                                     console.log("Evolve " + data[pokemoni].pokemon_id);
 
-                                    pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(dataafter){
-                                        if(typeof(config.pushbullet_key) !== 'undefined' && config.pushbullet_key != '')
+                                    pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(evolve){
+                                        if(evolve.result == 'SUCCESS')
                                         {
+                                            if(typeof(config.pushbullet_key) !== 'undefined' && config.pushbullet_key != '')
+                                            {
+                                                var evolve_data = evolve.evolved_pokemon_data;
+                                                request.post({
+                                                    url: 'https://api.pushbullet.com/v2/pushes',
+                                                    form: {
+                                                        "type": "note",
+                                                        "title": "Evolve "+data[pokemoni].pokemon_id,
+                                                        "body": "Evolve "+data[pokemoni].pokemon_id+" with CP "+data[pokemoni].cp+" to "+evolve_data.pokemon_id+" with CP "+evolve_data.cp
+                                                    },
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': 'Bearer '+config.pushbullet_key
+                                                    }
+                                                }, function(error, response, body){
+                                                    console.log(body);
+                                                });
+                                            }
+                                        }
+                                        else {
                                             request.post({
                                                 url: 'https://api.pushbullet.com/v2/pushes',
                                                 form: {
                                                     "type": "note",
-                                                    "title": "Evolve "+data[pokemoni].pokemon_id,
-                                                    "body": "Evolve "+data[pokemoni].pokemon_id+" with CP "+data[pokemoni].cp+" to "+dataafter.pokemon_id+" with CP "+dataafter.cp
+                                                    "title": "Evolve ERROR "+data[pokemoni].pokemon_id,
+                                                    "body": "Evolve ERROR"
                                                 },
                                                 headers: {
                                                     'Content-Type': 'application/json',
