@@ -16,9 +16,7 @@ var state = "noauth";
 
 var endpoint;
 var token;
-var ltype = "pokemon";
-var usr = "dannybevers";
-var pass = "dddddd";
+var ltype = "google";
 
 // login.login_pokemon(function(data){
 //     token = data;
@@ -59,7 +57,6 @@ login.login_google(function(data){
     pokemon.coords.latitude = 33.811931;
     pokemon.coords.longitude = -117.918996;
     console.log("Logged in with google");
-
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;
         state = "endpoint";
@@ -232,10 +229,13 @@ var doCleanup = function(){
                     return 0;
                 });
                 for(var i=1;i<byPokemon[type].length;i++){
-                    console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
-                    pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
-                        if(data.result != "SUCCESS") console.log(data);
-                    });
+                    if(byPokemon[type][i].cp < config.max_cp_transfer)
+                    {
+                        console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
+                        pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
+                            if(data.result != "SUCCESS") console.log(data);
+                        });
+                    }
                 }
             }
         }
@@ -286,10 +286,30 @@ var doCleanup = function(){
                         if(familydata[family].family_id == famliyid && pokemonSettings[pokemonsetting].pokemon_id == data[pokemoni].pokemon_id){
                             if(typeof(pokemonSettings[pokemonsetting].candy_to_evolve) === "undefined") break;
                             if(familydata[family].candy > pokemonSettings[pokemonsetting].candy_to_evolve){
-                                console.log("Evolve " + data[pokemoni].pokemon_id);
-                                pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(data){
-                                    console.log(data);
-                                });
+                                if(data[pokemoni].cp > config.min_cp_evolve)
+                                {
+                                    console.log("Evolve " + data[pokemoni].pokemon_id);
+
+                                    pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(dataafter){
+                                        if(typeof(config.pushbullet_key) !== 'undefined' && config.pushbullet_key != '')
+                                        {
+                                            request.post({
+                                                url: 'https://api.pushbullet.com/v2/pushes',
+                                                form: {
+                                                    "type": "note",
+                                                    "title": "Evolve "+data[pokemoni].pokemon_id,
+                                                    "body": "Evolve "+data[pokemoni].pokemon_id+" with CP "+data[pokemoni].cp+" to "+dataafter.pokemon_id+" with CP "+dataafter.cp
+                                                },
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': 'Bearer '+config.pushbullet_key
+                                                }
+                                            }, function(error, response, body){
+                                                console.log(body);
+                                            });
+                                        }
+                                    });
+                                }
                             }
                         }
                     }
