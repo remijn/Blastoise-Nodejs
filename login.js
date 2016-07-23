@@ -39,8 +39,8 @@ exports.headers = {
 //                 'lt': data.lt,
 //                 'execution': data.execution,
 //                 '_eventId': 'submit',
-//                 'username': 'dannybevers',
-//                 'password': 'dddddd'
+//                 'username': '',
+//                 'password': ''
 //             },
 //             headers: {
 //                 'User-Agent': 'niantic'
