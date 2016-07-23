@@ -11,6 +11,12 @@ var catchable = [];
 var pokestops = [];
 
 var pokemonSettings;
+var pokeBalls = {
+    1: 'ITEM_POKE_BALL',
+    2: 'ITEM_GREAT_BALL',
+    3: 'ITEM_ULTRA_BALL',
+    4: 'ITEM_MASTER_BALL'
+};
 
 var state = "noauth";
 
@@ -262,7 +268,7 @@ var doCatch = function(){
             if(typeof(bestBall) !== 'undefined')
             {
                 pokemon.catchPokemon(endpoint, token, ltype, data, bestBall, function(catchdata){
-                    console.log('THROW BALL: ' + items[bestBall].item_id);
+                    console.log('THROW BALL: ' + pokeBalls[bestBall]);
                     console.log(catchdata);
                     if(catchdata.status == "CATCH_SUCCESS"){
                         console.log('Caught ' +data.wild_pokemon.pokemon_data.cp+ " CP " + data.wild_pokemon.pokemon_data.pokemon_id + " got " + catchdata.capture_award.xp +"xp " + catchdata.capture_award.candy[0] +"candy " +catchdata.capture_award.stardust[0] +"dust ");
