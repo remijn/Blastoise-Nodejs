@@ -52,10 +52,11 @@ var ltype = "google";
 login.login_google(function(data){
     token = data;
     state = "auth";
-    // pokemon.coords.latitude = 48.872610; //Disneyland Paris
-    // pokemon.coords.longitude = 2.776761;
-    pokemon.coords.latitude = 33.811931;
-    pokemon.coords.longitude = -117.918996;
+    pokemon.coords.latitude = 48.872610; //Disneyland Paris
+    pokemon.coords.longitude = 2.776761;
+    // pokemon.coords.latitude = 33.811931; //D
+    // pokemon.coords.latitude = 51.369362; //Maaspoort
+    // pokemon.coords.longitude = 6.165835;
     console.log("Logged in with google");
     pokemon.api_endpoint(token, ltype, function(data){
         endpoint = data;

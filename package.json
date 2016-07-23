@@ -12,6 +12,10 @@
     "pokemongo-protobuf": "*",
     "node-protobuf": "*",
     "s2geometry-node": "*",
-    "geolib": "*"
+    "geolib": "*",
+    "ejs": "^1.0.0",
+    "express": "^4.6.1",
+    "geohash": "*",
+    "socket.io": "*"
   }
 }
