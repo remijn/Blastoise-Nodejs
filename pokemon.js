@@ -145,7 +145,7 @@ exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callbac
         if(typeof(data.returns) !== 'undefined')
         {
             var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
-            if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined')
+            if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined' && typeof(data.returns[1]) !== 'undefined')
             {
                 proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
 
