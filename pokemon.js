@@ -142,10 +142,23 @@ exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callbac
         }
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
-            // proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
+        if(typeof(data.returns) !== 'undefined')
+        {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
+            if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined')
+            {
+                proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
 
-        callback(response);
+                callback(response);
+            }
+            else {
+                console.log(data);
+                console.log(response);
+            }
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.getInventory = function(endpoint, access_token, ltype, callback){
@@ -318,26 +331,30 @@ exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, ca
 };
 
 exports.encounter = function(endpoint, access_token, ltype, pokemon, callback){
-    var spawn = new ByteBuffer(4);
-    spawn.writeString("test");
-    let encountermessage = {
-        encounter_id: pokemon.encounter_id,
-        spawn: pokemon.spawn_point_id,
-        player_latitude: this.coords.latitude,
-        player_longitude: this.coords.longitude,
-    };
-    var encounterbuffer = encounter.serialize(encountermessage, "Encounter");
-    var requests = [
-        {
-            request_type: "ENCOUNTER",
-            request_message: encounterbuffer
-        }
-    ];
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
-        callback(response);
-    });
+    if(typeof(pokemon) !== 'undefined')
+    {
+        var spawn = new ByteBuffer(4);
+        spawn.writeString("test");
+        let encountermessage = {
+            encounter_id: pokemon.encounter_id,
+            spawn: pokemon.spawn_point_id,
+            player_latitude: this.coords.latitude,
+            player_longitude: this.coords.longitude,
+        };
+
+        var encounterbuffer = encounter.serialize(encountermessage, "Encounter");
+        var requests = [
+            {
+                request_type: "ENCOUNTER",
+                request_message: encounterbuffer
+            }
+        ];
+        this.api_req(endpoint, access_token, requests, ltype, function(data){
+            // console.log(data);
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
+            callback(response);
+        });
+    }
 };
 exports.Heartbeat = function(endpoint, access_token, ltype, callback){
     var nullbytes = new Buffer(21);

@@ -18,6 +18,37 @@ var endpoint;
 var token;
 var ltype = "google";
 
+// login.login_pokemon(function(data){
+//     token = data;
+//     console.log(token);
+//     return false;
+//     state = "auth";
+//     // pokemon.coords.latitude = 48.872610; //Disneyland Paris
+//     // pokemon.coords.longitude = 2.776761;
+//     pokemon.coords.latitude = 33.811931;
+//     pokemon.coords.longitude = -117.918996;
+//     console.log("Logged in with pokemon");
+//     pokemon.api_endpoint(token, ltype, function(data){
+//
+//         // endpoint = data;
+//         // state = "endpoint";
+//         // console.log("Got api endpoint");
+//         // pokemon.getProfile(endpoint, token, ltype, function(data){
+//         //     console.log("----PROFILE START----");
+//         //     console.log("User: " + data.player_data.username);
+//         //     console.log("Coin: " + data.player_data.currencies[0].amount);
+//         //     console.log("Dust: " + data.player_data.currencies[1].amount);
+//         //     console.log("----PROFILE END----");
+//         //     doHearbeat();
+//         // });
+//         // pokemon.getPlayerStats(endpoint, token, ltype, function(data){
+//         //     console.log(data);
+//         // })
+//
+//
+//     });
+// });
+
 login.login_google(function(data){
     token = data;
     state = "auth";
@@ -198,10 +229,13 @@ var doCleanup = function(){
                     return 0;
                 });
                 for(var i=1;i<byPokemon[type].length;i++){
-                    console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
-                    pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
-                        if(data.result != "SUCCESS") console.log(data);
-                    });
+                    if(byPokemon[type][i].cp < config.max_cp_transfer)
+                    {
+                        console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
+                        pokemon.transferPokemon(endpoint, token, ltype, byPokemon[type][i], function(data){
+                            if(data.result != "SUCCESS") console.log(data);
+                        });
+                    }
                 }
             }
         }
@@ -252,10 +286,50 @@ var doCleanup = function(){
                         if(familydata[family].family_id == famliyid && pokemonSettings[pokemonsetting].pokemon_id == data[pokemoni].pokemon_id){
                             if(typeof(pokemonSettings[pokemonsetting].candy_to_evolve) === "undefined") break;
                             if(familydata[family].candy > pokemonSettings[pokemonsetting].candy_to_evolve){
-                                console.log("Evolve " + data[pokemoni].pokemon_id);
-                                pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(data){
-                                    console.log(data);
-                                });
+                                if(data[pokemoni].cp > config.min_cp_evolve)
+                                {
+                                    console.log("Evolve " + data[pokemoni].pokemon_id);
+
+                                    pokemon.evolvePokemon(endpoint, token, ltype, data[pokemoni], function(evolve){
+                                        if(evolve.result == 'SUCCESS')
+                                        {
+                                            if(typeof(config.pushbullet_key) !== 'undefined' && config.pushbullet_key != '')
+                                            {
+                                                var evolve_data = evolve.evolved_pokemon_data;
+                                                request.post({
+                                                    url: 'https://api.pushbullet.com/v2/pushes',
+                                                    form: {
+                                                        "type": "note",
+                                                        "title": "Evolve "+data[pokemoni].pokemon_id,
+                                                        "body": "Evolve "+data[pokemoni].pokemon_id+" with CP "+data[pokemoni].cp+" to "+evolve_data.pokemon_id+" with CP "+evolve_data.cp
+                                                    },
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'Authorization': 'Bearer '+config.pushbullet_key
+                                                    }
+                                                }, function(error, response, body){
+                                                    console.log(body);
+                                                });
+                                            }
+                                        }
+                                        else {
+                                            request.post({
+                                                url: 'https://api.pushbullet.com/v2/pushes',
+                                                form: {
+                                                    "type": "note",
+                                                    "title": "Evolve ERROR "+data[pokemoni].pokemon_id,
+                                                    "body": "Evolve ERROR"
+                                                },
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    'Authorization': 'Bearer '+config.pushbullet_key
+                                                }
+                                            }, function(error, response, body){
+                                                console.log(body);
+                                            });
+                                        }
+                                    });
+                                }
                             }
                         }
                     }
