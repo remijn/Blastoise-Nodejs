@@ -26,30 +26,33 @@ var ltype = "google";
 
 // login.login_pokemon(function(data){
 //     token = data;
-//     console.log(token);
-//     return false;
+//
 //     state = "auth";
-//     // pokemon.coords.latitude = 48.872610; //Disneyland Paris
-//     // pokemon.coords.longitude = 2.776761;
 //     pokemon.coords.latitude = 33.811931;
 //     pokemon.coords.longitude = -117.918996;
-//     console.log("Logged in with pokemon");
-//     pokemon.api_endpoint(token, ltype, function(data){
+//     console.log("Logged in with PTC");
 //
-//         // endpoint = data;
-//         // state = "endpoint";
-//         // console.log("Got api endpoint");
-//         // pokemon.getProfile(endpoint, token, ltype, function(data){
-//         //     console.log("----PROFILE START----");
-//         //     console.log("User: " + data.player_data.username);
-//         //     console.log("Coin: " + data.player_data.currencies[0].amount);
-//         //     console.log("Dust: " + data.player_data.currencies[1].amount);
-//         //     console.log("----PROFILE END----");
-//         //     doHearbeat();
-//         // });
-//         // pokemon.getPlayerStats(endpoint, token, ltype, function(data){
-//         //     console.log(data);
-//         // })
+//     console.log(token);
+//     console.log(ltype);
+//
+//     pokemon.api_endpoint(token, ltype, function(data){
+//         endpoint = data;
+//         state = "endpoint";
+//         console.log("Got api endpoint");
+//         pokemon.getProfile(endpoint, token, ltype, function(data){
+//             console.log("----PROFILE START----");
+//             console.log("User: " + data.player_data.username);
+//             console.log("Coin: " + data.player_data.currencies[0].amount);
+//             console.log("Dust: " + data.player_data.currencies[1].amount);
+//             console.log("----PROFILE END----");
+//             doHearbeat();
+//         });
+//         pokemon.getPlayerStats(endpoint, token, ltype, function(data){
+//             console.log(data);
+//         });
+//         pokemon.getPokemonSettings(endpoint, token, ltype, function(settings){
+//             pokemonSettings = settings;
+//         });
 //
 //
 //     });
@@ -324,6 +327,10 @@ var doCleanup = function(){
                         break;
                     case("ITEM_SUPER_POTION"):
                         if(data[itemi+1].item_id == "ITEM_HYPER_POTION")
+                            discard = item.count;
+                        break;
+                    case("ITEM_HYPER_POTION"):
+                        if(data[itemi+1].item_id == "ITEM_MAX_POTION")
                             discard = item.count;
                         break;
                 }
