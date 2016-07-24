@@ -1,3 +1,5 @@
+var async = require('asyncawait/async');
+var await = require('asyncawait/await');
 var request = require('request');
 var config = require('./config');
 var google = require('googleapis');
@@ -5,159 +7,64 @@ var google = require('googleapis');
 var tokens = require('./tokens');
 var fs = require('fs');
 
+var ClientID = "848232511240-73ri3t7plvk96pj4f85uj8otdat2alem.apps.googleusercontent.com";
+var ClientSecret = "NCjF1TLi2CcY6t5mt0ZveuL7";
+var Redirect = "urn:ietf:wg:oauth:2.0:oob";
+
+var OAuth2 = google.auth.OAuth2;
+var oauth2Client = new OAuth2(ClientID, ClientSecret, Redirect);
+
 exports = module.exports = {};
 
-exports.headers = {
-    "User-Agent": "niantic"
+exports.hasSession = function(){
+    if(typeof tokens.google !== "undefined" && typeof tokens.google.refresh_token !== "undefined"){
+        return "google";
+    }else{
+        return false;
+    }
 };
 
-// exports.login_pokemon = function(usr, pass, cal){
-//     console.log("Logging in as: " + usr);
-//
-//     //Initiate session And fill cookie jar
-//     request.get({
-//         url: config.login_url_pokemon,
-//         headers: {
-//             'User-Agent': 'niantic'
-//         }
-//     }, function(error, response, body){
-//         var data;
-//
-//         try {
-//             data = JSON.parse(body);
-//         }catch(err){
-//             console.log(err);
-//             // return cal(err, null);
-//         }
-//
-//         console.log(data);
-//         console.log('test');
-// return false;
-//         request.post({
-//             url: config.login_url_pokemon,
-//             form: {
-//                 'lt': data.lt,
-//                 'execution': data.execution,
-//                 '_eventId': 'submit',
-//                 'username': '',
-//                 'password': ''
-//             },
-//             headers: {
-//                 'User-Agent': 'niantic'
-//             }
-//         }, function(error, response, body){
-//             if(error) {
-//                 return cal(error, null);
-//             }
-//
-//             if (body) {
-//                 var parsedBody = JSON.parse(body);
-//
-//                 if (parsedBody.errors && parsedBody.errors.length !== 0) {
-//                     return cal(new Error('Error logging in: ' + parsedBody.errors[0]), null);
-//                 }
-//             }
-//
-//             var ticket = response.headers['location'].split('ticket=')[1];
-// console.log(response.headers);
-//             return false;
-//             request.post({
-//                 url: config.login_url_auth_pokemon,
-//                 headers: this.headers,
-//                 form: {
-//                     'client_id': 'mobile-app_pokemon-go',
-//                     'redirect_uri': 'https://www.nianticlabs.com/pokemongo/error',
-//                     'client_secret': 'w8ScCUXJQc6kXKw8FiOhd8Fixzht18Dq3PEVkUCP5ZPxtgyWsbTvWHFLm2wNY0JR',
-//                     'grant_type': 'refresh_token',
-//                     'code': ticket
-//                 }
-//             }, function(error, response, body){
-//                 var token;
-//
-//                 if(error) {
-//                     return cal(error, null);
-//                 }
-//
-//                 console.log(response);
-//                 console.log(body);
-//
-//                 token = body.split('token=')[1];
-//                 if(!token) {
-//                     return cal(new Error('Login failed'), null);
-//                 }
-//
-//                 token = token.split('&')[0];
-//
-//                 if (!token) {
-//                     return cal(new Error('Login failed'), null);
-//                 }
-//
-//                 console.log('[i] Session token: ' + token);
-//                 cal(null, token);
-//             });
-//         })
-//     });
-
-    // return false;
-
-    // var options = {
-    //     url: config.login_url,
-    //     jar: this.jar,
-    //     headers: this.headers,
-    //     qs: {
-    //
-    //     }
-    //
-    // }
-// };
-
-exports.login_google = function(cal){
-    var OAuth2 = google.auth.OAuth2;
-    var oauth2Client = new OAuth2(
-        "848232511240-73ri3t7plvk96pj4f85uj8otdat2alem.apps.googleusercontent.com", //ClientID
-        "NCjF1TLi2CcY6t5mt0ZveuL7", //Client Secret
-        "urn:ietf:wg:oauth:2.0:oob"); //Redirect URL
-
-    if(tokens.refresh_token != "" && typeof(tokens.refresh_token) !== "undefined"){
-        oauth2Client.setCredentials(tokens);
-        oauth2Client.refreshAccessToken(function(err, tokens){
-            if(err) console.error(err);
-            // console.log(tokens);
-            cal(tokens.id_token);
-            fs.writeFileSync('tokens.json', JSON.stringify({access_token: tokens.access_token, refresh_token: tokens.refresh_token}));
+exports.refreshGoogle = async(function(){
+    oauth2Client.setCredentials(tokens.google);
+    var accessToken = await(new Promise(function(resolve, reject){
+        oauth2Client.refreshAccessToken(function(err, newtokens){
+            if(err) reject(err);
+            else{
+                resolve(newtokens);
+                tokens.google.access_token = newtokens.access_token;
+                tokens.google.refresh_token = newtokens.refresh_token;
+                fs.writeFileSync('tokens.json', JSON.stringify(tokens));
+            }
         });
-        console.log('refresh token found');
-        return;
-    }
+    }));
+    return accessToken.id_token;
 
-    var scopes = [
+});
+
+exports.loginGoogle = function(){
+    var scope = [
         "https://www.googleapis.com/auth/userinfo.email"
     ];
     var url = oauth2Client.generateAuthUrl({
         access_type: 'offline',
-        scope: scopes
+        scope: scope
     });
-
-    console.log(url);
-    var readline = require('readline');
-
-    var rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-
-    rl.question("paste the activation code here: ", function(answer){
-        console.log(answer);
-        rl.close();
-        oauth2Client.getToken(answer, function(err, tokens){
-            if(err){
-                console.error(err);
-                return;
-            }
-            oauth2Client.setCredentials(tokens);
-            console.log(tokens);
-            fs.writeFileSync('tokens.json', JSON.stringify({access_token: tokens.access_token, refresh_token: tokens.refresh_token}));
-            cal(tokens.id_token);
-        });
-    });
+    return url;
 };
+exports.useGoogleToken = async(function(token){
+    var getToken = await(new Promise(function(resolve, reject){
+        oauth2Client.getToken(token, function(err, newtokens){
+            if(err){
+                reject(err);
+            }
+            oauth2Client.setCredentials(newtokens);
+            resolve(newtokens.id_token);
+            tokens.google = {};
+            tokens.google.access_token = newtokens.access_token;
+            tokens.google.refresh_token = newtokens.refresh_token;
+            fs.writeFileSync('tokens.json', JSON.stringify(tokens));
+        });
+    }));
+    return getToken;
+
+});

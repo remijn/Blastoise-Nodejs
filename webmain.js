@@ -26,5 +26,3 @@ exports.init = function(){
     http.listen(3000);
     console.log('3000 is the magic port');
 };
-
-exports.init();

@@ -1,3 +1,5 @@
+var async = require('asyncawait/async');
+var await = require('asyncawait/await');
 var fs = require("fs");
 var p = require("protobufjs");
 var ByteBuffer = require('bytebuffer');
@@ -18,7 +20,16 @@ exports.coords = {
     altitude: 1
 };
 
-exports.api_req = function(url, access_token, req, ltype, callback){
+exports.ltype = "";
+exports.token = "";
+exports.url = config.api_url;
+
+exports.init = async(function(){
+    var url = await(this.api_endpoint())
+    console.log(url);
+});
+
+exports.api_req = async(function(req, filename){
     var self = this;
     var coords = this.coords;
 
@@ -31,58 +42,55 @@ exports.api_req = function(url, access_token, req, ltype, callback){
     envelop.longitude = coords.longitude;
     envelop.altitude = coords.altitude;
     envelop.auth_info = {};
-    envelop.auth_info.provider = ltype;
+    envelop.auth_info.provider = this.ltype;
     envelop.auth_info.token = {};
-    envelop.auth_info.token.contents = access_token;
+    envelop.auth_info.token.contents = this.token;
     envelop.auth_info.token.unknown2 = 59;
     envelop.unknown12 = 989;
 
     var buf = proto.serialize(envelop, "POGOProtos.Networking.Envelopes.RequestEnvelope");
 
-    fs.writeFileSync('req.bin', buf);
+    if(typeof filename !== "undefined") fs.writeFileSync('req'+filename, buf);
 
-    request.post(url, {
-        body: buf,
-        encoding: null,
-        headers: {
-            'User-Agent': 'Niantic App'
-        }
-    }, function(error, response, data){
-        if(error){
-            console.error(error);
-            return;
-        }
-        var buffer = new Buffer(data);
-        try{
-            if(buffer.toString().indexOf('Server Error') != -1){
-                console.log('Server Error response, retry in 30sec');
-                setTimeout(function(){
-                    console.log('attempt retry');
-                    self.api_req(url, access_token, req, ltype, callback);
-                }, 30000); //Retry in 30sec
-                return;
+    var response = await(new Promise(function(resolve, reject){
+        request.post(exports.url, {
+            body: buf,
+            encoding: null,
+            headers: {
+                'User-Agent': 'Niantic App'
             }
-
-            var result = proto.parse(buffer, "POGOProtos.Networking.Envelopes.ResponseEnvelope");
-
-        }catch(e){
-            if(e.decoded){
-                console.log(e.decoded);
+        }, function(error, response, data){
+            if(error){
+                reject(error);
             }
-            console.error(e);
-        }
-        if(typeof(result.response) === "undefined" || result.response.length == 0){
-            callback(result, "nothing was returned");
-        }else{
-            callback(result);
-        }
+            var buffer = new Buffer(data);
+            try{
+                if(buffer.toString().indexOf('Server Error') != -1){
+                    console.error("Server Error");
+                    reject("Server Error");
+                }else{
 
-        fs.writeFileSync('res.bin', buffer);
-    });
+                }
+                if(typeof filename !== "undefined") fs.writeFileSync('res'+filename, buffer);
+                var result = proto.parse(buffer, "POGOProtos.Networking.Envelopes.ResponseEnvelope");
+            }catch(e){
+                if(e.decoded){
+                    console.log(e.decoded);
+                }
+                console.error(e);
+            }
+            if((typeof(result.returns) === "undefined" || result.returns.length == 0) && typeof result.api_url === "undefined"){
+                reject("nothing was returned");
+            }else{
+                resolve(result);
+            }
+        });
+    }));
+    return response;
 
-};
+});
 
-exports.api_endpoint = function(access_token, ltype, callback){
+exports.api_endpoint = async(function(){
     var self = this;
     console.log("start protobuff stuff");
     var envelope = [
@@ -102,18 +110,14 @@ exports.api_endpoint = function(access_token, ltype, callback){
             request_type: "DOWNLOAD_SETTINGS"
         }
     ];
-    this.api_req(config.api_url, access_token, envelope, ltype, function(data, err){
-        if(!data.api_url){
-            console.error(err);
-            //Try again
-            console.log(data);
-            self.api_endpoint(access_token, ltype, callback);
-            return;
-        }
-
-        callback("https://"+data.api_url+"/rpc");
-    });
-};
+    var returndata = await (this.api_req(envelope));
+    if(!returndata.api_url){
+        // await(self.api_endpoint());
+        console.error("Api url is not specified")
+    }else{
+        return "https://"+returndata.api_url+"/rpc";
+    }
+});
 
 exports.getProfile = function(endpoint, access_token, ltype, callback){
     var requests = [
@@ -233,18 +237,17 @@ exports.getPokedex = function(endpoint, access_token, ltype, callback){
         callback(pokemons);
     })
 };
-exports.getItems = function(endpoint, access_token, ltype, callback){
-    this.getInventory(endpoint, access_token, ltype, function (data) {
-        var items = [];
-        for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
-            var item = data.inventory_delta.inventory_items[itemi];
-            if(typeof(item.inventory_item_data.item) !== "undefined"){
-                items.push(item.inventory_item_data.item);
-            }
+exports.getItems = async(function(endpoint, access_token, ltype, callback){
+    let inventory = await(this.getInventory());
+    let items = [];
+    for(var itemi = 0;itemi<inventory.inventory_delta.inventory_items.length;itemi++){
+        let item = inventory.inventory_delta.inventory_items[itemi];
+        if(typeof(item.inventory_item_data.item) !== "undefined"){
+            items.push(item.inventory_item_data.item);
         }
-        callback(items);
-    })
-};
+    }
+    return items;
+});
 exports.getPokemonFamilies = function(endpoint, access_token, ltype, callback){
     this.getInventory(endpoint, access_token, ltype, function (data) {
         var items = [];
@@ -307,7 +310,7 @@ exports.discardItem = function(endpoint, access_token, ltype, item, count, callb
         callback(response);
     });
 };
-exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, callback){
+exports.catchPokemon = async (function(pokemon, ball){
     var requests = [
         {
             request_type: "CATCH_POKEMON",
@@ -323,18 +326,14 @@ exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, ca
         }
     ];
 
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.CatchPokemonResponse");
-        callback(response);
-    });
-};
+    let data= await(this.api_req(requests));
+    // console.log(data);
+    var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.CatchPokemonResponse");
+    return response;
+});
 
-exports.encounter = function(endpoint, access_token, ltype, pokemon, callback){
-    if(typeof(pokemon) !== 'undefined')
-    {
-        var spawn = new ByteBuffer(4);
-        spawn.writeString("test");
+exports.encounter = async(function(pokemon){
+    if(typeof(pokemon) !== 'undefined') {
         let encountermessage = {
             encounter_id: pokemon.encounter_id,
             spawn: pokemon.spawn_point_id,
@@ -349,14 +348,12 @@ exports.encounter = function(endpoint, access_token, ltype, pokemon, callback){
                 request_message: encounterbuffer
             }
         ];
-        this.api_req(endpoint, access_token, requests, ltype, function(data){
-            // console.log(data);
-            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
-            callback(response);
-        });
+        var data = await(this.api_req(requests));
+        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
+        return response;
     }
-};
-exports.Heartbeat = function(endpoint, access_token, ltype, callback){
+});
+exports.Heartbeat = async (function(){
     var nullbytes = new Buffer(21);
     nullbytes.fill(0);
 
@@ -395,10 +392,9 @@ exports.Heartbeat = function(endpoint, access_token, ltype, callback){
             request_type: "DOWNLOAD_SETTINGS"
         }
     ];
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetMapObjectsResponse"));
-    });
-};
+    let data = await(this.api_req(requests, 'hearbeat.bin'));
+    return proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetMapObjectsResponse");
+});
 
 function getNeighbors(lat, lng) {
     var origin = new s2.S2CellId(new s2.S2LatLng(lat, lng)).parent(15);
