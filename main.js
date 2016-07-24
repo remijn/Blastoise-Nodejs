@@ -11,6 +11,12 @@ var catchable = [];
 var pokestops = [];
 
 var pokemonSettings;
+var pokeBalls = {
+    1: 'ITEM_POKE_BALL',
+    2: 'ITEM_GREAT_BALL',
+    3: 'ITEM_ULTRA_BALL',
+    4: 'ITEM_MASTER_BALL'
+};
 
 var state = "noauth";
 
@@ -20,30 +26,33 @@ var ltype = "google";
 
 // login.login_pokemon(function(data){
 //     token = data;
-//     console.log(token);
-//     return false;
+//
 //     state = "auth";
-//     // pokemon.coords.latitude = 48.872610; //Disneyland Paris
-//     // pokemon.coords.longitude = 2.776761;
 //     pokemon.coords.latitude = 33.811931;
 //     pokemon.coords.longitude = -117.918996;
-//     console.log("Logged in with pokemon");
-//     pokemon.api_endpoint(token, ltype, function(data){
+//     console.log("Logged in with PTC");
 //
-//         // endpoint = data;
-//         // state = "endpoint";
-//         // console.log("Got api endpoint");
-//         // pokemon.getProfile(endpoint, token, ltype, function(data){
-//         //     console.log("----PROFILE START----");
-//         //     console.log("User: " + data.player_data.username);
-//         //     console.log("Coin: " + data.player_data.currencies[0].amount);
-//         //     console.log("Dust: " + data.player_data.currencies[1].amount);
-//         //     console.log("----PROFILE END----");
-//         //     doHearbeat();
-//         // });
-//         // pokemon.getPlayerStats(endpoint, token, ltype, function(data){
-//         //     console.log(data);
-//         // })
+//     console.log(token);
+//     console.log(ltype);
+//
+//     pokemon.api_endpoint(token, ltype, function(data){
+//         endpoint = data;
+//         state = "endpoint";
+//         console.log("Got api endpoint");
+//         pokemon.getProfile(endpoint, token, ltype, function(data){
+//             console.log("----PROFILE START----");
+//             console.log("User: " + data.player_data.username);
+//             console.log("Coin: " + data.player_data.currencies[0].amount);
+//             console.log("Dust: " + data.player_data.currencies[1].amount);
+//             console.log("----PROFILE END----");
+//             doHearbeat();
+//         });
+//         pokemon.getPlayerStats(endpoint, token, ltype, function(data){
+//             console.log(data);
+//         });
+//         pokemon.getPokemonSettings(endpoint, token, ltype, function(settings){
+//             pokemonSettings = settings;
+//         });
 //
 //
 //     });
@@ -262,7 +271,7 @@ var doCatch = function(){
             if(typeof(bestBall) !== 'undefined')
             {
                 pokemon.catchPokemon(endpoint, token, ltype, data, bestBall, function(catchdata){
-                    console.log('THROW BALL: ' + items[bestBall].item_id);
+                    console.log('THROW BALL: ' + pokeBalls[bestBall]);
                     console.log(catchdata);
                     if(catchdata.status == "CATCH_SUCCESS"){
                         console.log('Caught ' +data.wild_pokemon.pokemon_data.cp+ " CP " + data.wild_pokemon.pokemon_data.pokemon_id + " got " + catchdata.capture_award.xp +"xp " + catchdata.capture_award.candy[0] +"candy " +catchdata.capture_award.stardust[0] +"dust ");
@@ -318,6 +327,10 @@ var doCleanup = function(){
                         break;
                     case("ITEM_SUPER_POTION"):
                         if(data[itemi+1].item_id == "ITEM_HYPER_POTION")
+                            discard = item.count;
+                        break;
+                    case("ITEM_HYPER_POTION"):
+                        if(data[itemi+1].item_id == "ITEM_MAX_POTION")
                             discard = item.count;
                         break;
                 }

@@ -122,7 +122,12 @@ exports.getProfile = function(endpoint, access_token, ltype, callback){
         }
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
-        callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetPlayerResponse"));
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetPlayerResponse"));
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callback){
@@ -142,8 +147,7 @@ exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callbac
         }
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
-        if(typeof(data.returns) !== 'undefined')
-        {
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
             var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
             if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined' && typeof(data.returns[1]) !== 'undefined')
             {
@@ -171,8 +175,13 @@ exports.getInventory = function(endpoint, access_token, ltype, callback){
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.getPlayerStats = function(endpoint, access_token, ltype, callback) {
@@ -205,8 +214,13 @@ exports.downloadItemTemplates = function(endpoint, access_token, ltype, callback
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.DownloadItemTemplatesResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.DownloadItemTemplatesResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.getPokemonSettings = function(endpoint, access_token, ltype, callback){
@@ -272,8 +286,13 @@ exports.transferPokemon = function(endpoint, access_token, ltype, pokemon, callb
 
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.ReleasePokemonResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.ReleasePokemonResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.evolvePokemon = function(endpoint, access_token, ltype, pokemon, callback){
@@ -287,8 +306,13 @@ exports.evolvePokemon = function(endpoint, access_token, ltype, pokemon, callbac
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EvolvePokemonResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EvolvePokemonResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.discardItem = function(endpoint, access_token, ltype, item, count, callback){
@@ -303,8 +327,13 @@ exports.discardItem = function(endpoint, access_token, ltype, item, count, callb
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, callback){
@@ -325,8 +354,13 @@ exports.catchPokemon = function(endpoint, access_token, ltype, pokemon, ball, ca
 
     this.api_req(endpoint, access_token, requests, ltype, function(data){
         // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.CatchPokemonResponse");
-        callback(response);
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.CatchPokemonResponse");
+            callback(response);
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 
@@ -351,8 +385,13 @@ exports.encounter = function(endpoint, access_token, ltype, pokemon, callback){
         ];
         this.api_req(endpoint, access_token, requests, ltype, function(data){
             // console.log(data);
-            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
-            callback(response);
+            if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+                var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.EncounterResponse");
+                callback(response);
+            }
+            else {
+                console.log(data);
+            }
         });
     }
 };
@@ -396,7 +435,12 @@ exports.Heartbeat = function(endpoint, access_token, ltype, callback){
         }
     ];
     this.api_req(endpoint, access_token, requests, ltype, function(data){
-        callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetMapObjectsResponse"));
+        if(typeof(data) !== 'undefined' && typeof(data.returns) !== 'undefined' && typeof(data.returns[0]) !== 'undefined') {
+            callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetMapObjectsResponse"));
+        }
+        else {
+            console.log(data);
+        }
     });
 };
 
