@@ -26,6 +26,7 @@ exports.hasSession = function(){
 
 exports.refreshGoogle = async(function(){
     oauth2Client.setCredentials(tokens.google);
+    console.log('gettting token')
     var accessToken = await(new Promise(function(resolve, reject){
         oauth2Client.refreshAccessToken(function(err, newtokens){
             if(err) reject(err);
@@ -37,6 +38,7 @@ exports.refreshGoogle = async(function(){
             }
         });
     }));
+    console.log('got token')
     return accessToken.id_token;
 
 });

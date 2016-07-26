@@ -47,6 +47,7 @@ exports.doLoop = async(function(){
         exports.log("Heartbeat");
         await(exports.doHeartbeat()); //Hearbeat done
         await(exports.doCatch());
+        await(exports.doSpin());
     }
 });
 
@@ -149,21 +150,52 @@ exports.doCatch = async(function(){
 
     //Get Best ball
     let items = await(pokemon.getItems());
-    let ball = this.getBestBall(items, tocatch);
+    let ball = exports.getBestBall(items, encounter);
     if(typeof ball === "undefined"){
         this.log("No Pokeballs!");
         return;
     }
     var catchresult = await(pokemon.catchPokemon(encounter, ball));
     this.log("THROW BALL: " + pokeBalls[ball]);
-    if(catchdata.status == "CATCH_SUCCESS"){
-        this.log('Caught: ' +data.wild_pokemon.pokemon_data.cp+ " CP " + data.wild_pokemon.pokemon_data.pokemon_id + " got " + catchdata.capture_award.xp +"xp " + catchdata.capture_award.candy[0] +"candy " +catchdata.capture_award.stardust[0] +"dust ");
+    if(catchresult.status == "CATCH_SUCCESS"){
+        this.log('Caught: ' +encounter.wild_pokemon.pokemon_data.cp+ " CP " + encounter.wild_pokemon.pokemon_data.pokemon_id + " got " + catchresult.capture_award.xp +"xp " + catchresult.capture_award.candy[0] +"candy " +catchresult.capture_award.stardust[0] +"dust ");
+    }else if(typeof catchresult.status =="undefined") {
+        this.log('FAILED: No result from catch')
     }else{
-        this.log('Did not catch: ' +data.wild_pokemon.pokemon_data.cp+ " CP " + data.wild_pokemon.pokemon_data.pokemon_id);
-        this.log('catchdata.status');
+        this.log(catchresult.status + ': ' + encounter.wild_pokemon.pokemon_data.cp+ " CP " + encounter.wild_pokemon.pokemon_data.pokemon_id);
     }
 
+});
 
+exports.doSpin = async(function(){
+    let spin = false;
+    var left = 0;
+    //Spin Pokestops
+    for(var stop=0;stop<pokestops.length;stop++){
+        let pokestop = pokestops[stop];
+        if(typeof(pokestop.cooldown_complete_timestamp_ms) === "undefined" || pokestop.cooldown_complete_timestamp_ms < Date.now()){
+            left++;
+            if(spin == false){
+                //Spin pokestop
+                exports.setLocation(pokestop.latitude, pokestop.longitude);
+                spin = true;
+                var spinresult = await(pokemon.spinPokestop(pokestop));
+                exports.log("Pokestop: " + spinresult.result);
+                if(spinresult.result == "SUCCESS" || spinresult.result == "INVENTORY_FULL"){
+                    exports.log('recieved ' + JSON.stringify(spinresult.items_awarded));
+                    if(spinresult.items_awarded.length == 0){
+                        pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 1;
+                    }
+                    pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 5;
+                }
+                if(spinresult.result == "IN_COOLDOWN_PERIOD"){
+                    pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000*3; //Try again in a minute
+                }
+            }
+        }
+    }
+
+    console.log('stops left to do ' + left);
 });
 
 exports.setLocation = function(latitude, longitude){
@@ -171,9 +203,32 @@ exports.setLocation = function(latitude, longitude){
     // console.log('moving ' + distance + " meters");
     pokemon.coords.latitude = latitude;
     pokemon.coords.longitude = longitude;
+    web.rtc.event.emit('setLocation', pokemon.coords);
 };
 exports.getLocation = function(){
     return pokemon.coords;
+};
+exports.getBalls = function(data){
+    var balls = {};
+
+    for (var itemi = 0; itemi < data.length; itemi++) {
+        switch (data[itemi].item_id) {
+            case "ITEM_POKE_BALL":
+                balls[data[itemi].item_id] = data[itemi].count;
+                break;
+            case "ITEM_GREAT_BALL":
+                balls[data[itemi].item_id] = data[itemi].count;
+                break;
+            case "ITEM_ULTRA_BALL":
+                balls[data[itemi].item_id] = data[itemi].count;
+                break;
+            case "ITEM_MASTER_BALL":
+                balls[data[itemi].item_id] = data[itemi].count;
+                break;
+        }
+    }
+    return balls;
+
 };
 exports.getBestBall = function(data, pokemon_data){
     if (typeof(pokemon_data) !== 'undefined' &&
@@ -221,7 +276,7 @@ exports.getBestBall = function(data, pokemon_data){
             return 2;
         }
 
-        if (greatBalls > 0 && pokemon_cp >= 500) {
+        if (greatBalls > 0 && pokemon_cp >= 400) {
             return 2;
         }
 
@@ -230,4 +285,3 @@ exports.getBestBall = function(data, pokemon_data){
 };
 
 exports.init();
-

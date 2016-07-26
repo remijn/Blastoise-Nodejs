@@ -8,16 +8,16 @@ var request = require('request');
 var long = require('long');
 var proto = require('pokemongo-protobuf');
 var pb = require('node-protobuf');
-var encounter = new pb(fs.readFileSync('messages.desc'))
+var encounter = new pb(fs.readFileSync('messages.desc'));
 
 var s2 = require('s2geometry-node');
 
 module.exports = exports = {};
 
 exports.coords = {
-    latitude: 51.366805,
-    longitude: 6.174072,
-    altitude: 1
+    latitude: 0,
+    longitude: 0,
+    altitude: 0
 };
 
 exports.ltype = "";
@@ -25,8 +25,7 @@ exports.token = "";
 exports.url = config.api_url;
 
 exports.init = async(function(){
-    var url = await(this.api_endpoint())
-    console.log(url);
+    this.url = await(this.api_endpoint());
 });
 
 exports.api_req = async(function(req, filename){
@@ -53,38 +52,43 @@ exports.api_req = async(function(req, filename){
     if(typeof filename !== "undefined") fs.writeFileSync('req'+filename, buf);
 
     var response = await(new Promise(function(resolve, reject){
-        request.post(exports.url, {
-            body: buf,
-            encoding: null,
-            headers: {
-                'User-Agent': 'Niantic App'
-            }
-        }, function(error, response, data){
-            if(error){
-                reject(error);
-            }
-            var buffer = new Buffer(data);
-            try{
-                if(buffer.toString().indexOf('Server Error') != -1){
-                    console.error("Server Error");
-                    reject("Server Error");
-                }else{
+        try{
+            request.post(exports.url, {
+                body: buf,
+                encoding: null,
+                headers: {
+                    'User-Agent': 'Niantic App'
+                }
+            }, function(error, response, data){
+                if(error){
+                    reject(error);
+                }
+                var buffer = new Buffer(data);
+                try{
+                    if(buffer.toString().indexOf('Server Error') != -1){
+                        console.error("Server Error");
+                        reject("Server Error");
+                    }else{
 
+                    }
+                    if(typeof filename !== "undefined") fs.writeFileSync('res'+filename, buffer);
+                    var result = proto.parse(buffer, "POGOProtos.Networking.Envelopes.ResponseEnvelope");
+                }catch(e){
+                    if(e.decoded){
+                        console.log(e.decoded);
+                    }
+                    console.error(e);
                 }
-                if(typeof filename !== "undefined") fs.writeFileSync('res'+filename, buffer);
-                var result = proto.parse(buffer, "POGOProtos.Networking.Envelopes.ResponseEnvelope");
-            }catch(e){
-                if(e.decoded){
-                    console.log(e.decoded);
+                if((typeof(result.returns) === "undefined" || result.returns.length == 0) && typeof result.api_url === "undefined"){
+                    reject("nothing was returned");
+                }else{
+                    resolve(result);
                 }
-                console.error(e);
-            }
-            if((typeof(result.returns) === "undefined" || result.returns.length == 0) && typeof result.api_url === "undefined"){
-                reject("nothing was returned");
-            }else{
-                resolve(result);
-            }
-        });
+            });
+        }catch(e){
+            reject(e);
+        }
+
     }));
     return response;
 
@@ -92,7 +96,6 @@ exports.api_req = async(function(req, filename){
 
 exports.api_endpoint = async(function(){
     var self = this;
-    console.log("start protobuff stuff");
     var envelope = [
         {
             request_type: "GET_PLAYER"
@@ -129,8 +132,8 @@ exports.getProfile = function(endpoint, access_token, ltype, callback){
         callback(proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetPlayerResponse"));
     });
 };
-exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callback){
-    var requests = [
+exports.spinPokestop = async (function(pokestop){
+    let requests = [
         {
             request_type: "FORT_SEARCH",
             request_message: proto.serialize({
@@ -145,40 +148,19 @@ exports.spinPokestop = function(endpoint, access_token, ltype, pokestop, callbac
             request_type: "GET_PLAYER"
         }
     ];
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        if(typeof(data.returns) !== 'undefined')
-        {
-            var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
-            if(typeof(response) !== 'undefined' && response.result != 'FAILED' && typeof(data.returns) !== 'undefined')
-            {
-                proto.parse(data.returns[1], "POGOProtos.Networking.Responses.GetPlayerResponse")
 
-                callback(response);
-            }
-            else {
-                console.log(data);
-                console.log(response);
-            }
-        }
-        else {
-            console.log(data);
-        }
-    });
-};
-exports.getInventory = function(endpoint, access_token, ltype, callback){
+    let data = await(this.api_req(requests));
+    return proto.parse(data.returns[0], "POGOProtos.Networking.Responses.FortSearchResponse");
+});
+exports.getInventory = async(function(endpoint, access_token, ltype, callback){
     var requests = [
         {
             request_type: "GET_INVENTORY",
-            // request_message: proto.serialize({
-            // }, "POGOProtos.Networking.Requests.Messages.CatchPokemonMessage")
         }
     ];
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
-        callback(response);
-    });
-};
+    var data = await(this.api_req(requests));
+    return proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
+});
 exports.getPlayerStats = function(endpoint, access_token, ltype, callback) {
     this.getInventory(endpoint, access_token, ltype, function (data) {
         for(var itemi = 0;itemi<data.inventory_delta.inventory_items.length;itemi++){
@@ -237,7 +219,7 @@ exports.getPokedex = function(endpoint, access_token, ltype, callback){
         callback(pokemons);
     })
 };
-exports.getItems = async(function(endpoint, access_token, ltype, callback){
+exports.getItems = async(function(){
     let inventory = await(this.getInventory());
     let items = [];
     for(var itemi = 0;itemi<inventory.inventory_delta.inventory_items.length;itemi++){
@@ -326,7 +308,7 @@ exports.catchPokemon = async (function(pokemon, ball){
         }
     ];
 
-    let data= await(this.api_req(requests));
+    let data = await(this.api_req(requests));
     // console.log(data);
     var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.CatchPokemonResponse");
     return response;
@@ -392,7 +374,7 @@ exports.Heartbeat = async (function(){
             request_type: "DOWNLOAD_SETTINGS"
         }
     ];
-    let data = await(this.api_req(requests, 'hearbeat.bin'));
+    let data = await(this.api_req(requests, 'heartbeat.bin'));
     return proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetMapObjectsResponse");
 });
 

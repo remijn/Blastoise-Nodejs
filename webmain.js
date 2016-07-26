@@ -1,12 +1,17 @@
-var app = require('express')();
+var express = require('express');
+var app = express();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
-var rtc = require('./rtc');
 
 app.set('view engine', 'ejs');
+app.use(express.static('public'));
 
 exports = module.exports = {};
+exports.rtc = require('./rtc');
+
+var location;
+
 
 exports.init = function(){
     // index page
@@ -14,12 +19,13 @@ exports.init = function(){
         res.render('pages/index');
     });
 
-    rtc.init(io);
+    this.rtc.init(io);
 
-    rtc.event.on('connection', function(){
+    //RTC Events from Website
+    this.rtc.event.on('connection', function(){
         console.log('User connected')
     });
-    rtc.event.on('disconnect', function(){
+    this.rtc.event.on('disconnect', function(){
         console.log('User disconnected')
     });
 

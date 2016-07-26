@@ -9,16 +9,53 @@
             margin: 0;
             padding: 0;
             height: 100%;
+            font-family: 'Roboto', sans-serif;
         }
         #map{
             width: 100%;
             height: 100%;
         }
+        .notifications{
+            position:fixed;
+            left: 15px;
+            bottom: 15px;
+        }
+        .notification{
+            background-color: #fff;
+            border: 1px solid #d6d6d6;
+            height: 100px;
+            width: 400px;
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: 300;
+
+            display: flex;
+            /*flex-direction: column;*/
+            /*justify-content: center;*/
+            align-items: center;
+        }
+        .notification > *{
+        }
+        .notification > img{
+            height: 60px;
+            margin: 15px;
+            image-rendering: pixelated;
+        }
     </style>
+    <link href='https://fonts.googleapis.com/css?family=Roboto:400,300,500' rel='stylesheet' type='text/css'>
 </head>
 <body>
 <div id="map"></div>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl93Ny6Ge50xrXKHCMjucK8fQZ5MPh2H0&callback=initMap" async defer></script>
+<div class="notifications">
+    <div class="notification">
+        <img src="/pixel_icons/150.png"><span>Caught 2000cp</span>
+    </div>
+    <div class="notification">
+        <img src="/pixel_icons/150.png"><span>Caught 2000cp</span>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+<script src="/tmpl.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
     //Maps
@@ -26,11 +63,39 @@
     function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
             center: {lat: 51.370, lng: 6.172},
-            zoom: 8
+            zoom: 15,
+            streetViewControl: false,
         });
     }
+    var playerposition;
     //Networking
-    var socket = io();
+    var io = io();
+
+    io.on('disconnect', function(){
+        map.clearMarkers();
+        playerposition = null;
+    });
+    io.on('setInitialLocation', function(loc){
+        if(typeof map === "undefined") return;
+        console.log('setInitialLocation');
+        map.setCenter(loc)
+        playerposition = new google.maps.Marker({
+            position: loc,
+            map: map,
+            title: "Player Position"
+        });
+        //TODO Set view to coordinates
+    })
+    io.on('setLocation', function(loc){
+        if(typeof map === "undefined") return;
+        console.log('setLocation');
+        playerposition.setPosition(loc);
+    });
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl93Ny6Ge50xrXKHCMjucK8fQZ5MPh2H0&callback=initMap"></script>
+
+<script type="x-tmpl" id="notification">
+
 </script>
 </body>
 </html>
