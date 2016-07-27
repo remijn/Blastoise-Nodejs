@@ -3,7 +3,7 @@
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
-    <title>Bulbasaur</title>
+    <title>Blastoise</title>
     <style>
         html, body, #map {
             margin: 0;
@@ -29,6 +29,8 @@
             font-size: 18px;
             font-weight: 300;
 
+            cursor: pointer;
+
             display: flex;
             /*flex-direction: column;*/
             /*justify-content: center;*/
@@ -38,8 +40,18 @@
         }
         .notification > img{
             height: 60px;
-            margin: 15px;
             image-rendering: pixelated;
+        }
+        .notification > span{
+            margin-left: 15px;
+        }
+        .spinresult {
+            margin: 30px;
+        }
+        .spinresult > img{
+            height: 30px;
+            image-rendering: pixelated;
+            margin-right: 10px;
         }
     </style>
     <link href='https://fonts.googleapis.com/css?family=Roboto:400,300,500' rel='stylesheet' type='text/css'>
@@ -47,12 +59,6 @@
 <body>
 <div id="map"></div>
 <div class="notifications">
-    <div class="notification">
-        <img src="/pixel_icons/150.png"><span>Caught 2000cp</span>
-    </div>
-    <div class="notification">
-        <img src="/pixel_icons/150.png"><span>Caught 2000cp</span>
-    </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
 <script src="/tmpl.min.js"></script>
@@ -92,11 +98,67 @@
         console.log('setLocation');
         playerposition.setPosition(loc);
     });
+    io.on('showCatch', function(data){
+        console.log(data);
+        var o = {
+            type: "catch",
+            image: "/pixel_icons/"+data.id+".png",
+            message: "Caught " + data.cp +"CP " + data.name
+        }
+        new Notification(o);
+    });
+    io.on('showSpin', function(data){
+        console.log(data);
+        var o = {
+            type: "spin",
+            items: data
+        }
+        new Notification(o);
+    });
+
+
+
+
+
+    function Notification(o){
+        var self = this;
+        this.element = tmpl('notification', o);
+        console.log(o);
+        this.element = $(this.element);
+        this.parent = $('.notifications');
+        this.parent.append(this.element);
+
+        this.element.click(function(){
+            self.delete();
+        });
+
+        setTimeout(function(){
+            self.delete();
+        }, 4000);
+    }
+    Notification.prototype.delete = function(){
+        this.element.fadeOut(300, function(){
+            $(this).remove();
+        });
+    }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBl93Ny6Ge50xrXKHCMjucK8fQZ5MPh2H0&callback=initMap"></script>
 
 <script type="x-tmpl" id="notification">
+    <div class="notification">
+        {% if(o.type == "catch"){ %}
+            <img src="{%=o.image%}">
+            <span>{%=o.message%}</span>
+        {% } %}
 
+        {% if(o.type == "spin"){ %}
+            <div class="spinresult">
+                {% for (var i=0; i<o.items.length; i++) { %}
+                    <img src="/pixel_icons/{%=o.items[i]%}.png">
+                {% } %}
+            </div>
+        {% } %}
+    </div>
 </script>
 </body>
 </html>

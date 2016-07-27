@@ -25,4 +25,14 @@ exports.init = function(socketio){
         };
         io.emit('setLocation', loc);
     });
+    this.event.on('showCatch', function(data){
+        io.emit('showCatch', data);
+    });
+    this.event.on('showSpin', function(data){
+        var items = [];
+        for(item in data.items){
+            items.push(data.items[item].item_id)
+        }
+        io.emit('showSpin', items);
+    })
 };

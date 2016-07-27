@@ -3,6 +3,7 @@ var await = require('asyncawait/await');
 var web = require('./webmain');
 var config = require('./config');
 var login = require('./login');
+var pokedex = require('./pokedex');
 
 var pokemon = require('./pokemon');
 var request = require('request');
@@ -48,6 +49,7 @@ exports.doLoop = async(function(){
         await(exports.doHeartbeat()); //Hearbeat done
         await(exports.doCatch());
         await(exports.doSpin());
+        await(exports.discardItems());
     }
 });
 
@@ -128,7 +130,39 @@ exports.doHeartbeat = async(function(){
             }
         }
     }
+    pokestops = geolib.orderByDistance(exports.getLocation(), pokestops);
+
+    catchable = geolib.orderByDistance(exports.getLocation(), catchable);
     return;
+});
+
+exports.discardItems = async(function(){
+    var items = await(pokemon.getItems());
+    for(var itemi=0;itemi<items.length;itemi++){
+        let item = items[itemi];
+        let discard = item.count > 50?item.count-50:0;
+        if(items.length > itemi-1){
+            switch(item.item_id){
+                case("ITEM_POTION"):
+                    if(items[itemi+1].item_id == "ITEM_SUPER_POTION")
+                        discard = item.count;
+                    break;
+                case("ITEM_SUPER_POTION"):
+                    if(items[itemi+1].item_id == "ITEM_HYPER_POTION")
+                        discard = item.count;
+                    break;
+                case("ITEM_HYPER_POTION"):
+                    if(items[itemi+1].item_id == "ITEM_MAX_POTION")
+                        discard = item.count;
+                    break;
+            }
+        }
+
+        if(discard != 0 && typeof(discard) == "number"){
+            var discarded = await(pokemon.discardItem(item, discard));
+            console.log("Discarded " + discard + " " + item.item_id);
+        }
+    }
 });
 
 exports.doCatch = async(function(){
@@ -159,6 +193,13 @@ exports.doCatch = async(function(){
     this.log("THROW BALL: " + pokeBalls[ball]);
     if(catchresult.status == "CATCH_SUCCESS"){
         this.log('Caught: ' +encounter.wild_pokemon.pokemon_data.cp+ " CP " + encounter.wild_pokemon.pokemon_data.pokemon_id + " got " + catchresult.capture_award.xp +"xp " + catchresult.capture_award.candy[0] +"candy " +catchresult.capture_award.stardust[0] +"dust ");
+        var podedexentry = pokedex.getPokemon(encounter.wild_pokemon.pokemon_data.pokemon_id);
+        web.rtc.event.emit('showCatch', {
+            name: podedexentry.name,
+            id: podedexentry.id,
+            cp: encounter.wild_pokemon.pokemon_data.cp,
+
+        });
     }else if(typeof catchresult.status =="undefined") {
         this.log('FAILED: No result from catch')
     }else{
@@ -185,6 +226,10 @@ exports.doSpin = async(function(){
                     exports.log('recieved ' + JSON.stringify(spinresult.items_awarded));
                     if(spinresult.items_awarded.length == 0){
                         pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 1;
+                    }else{
+                        web.rtc.event.emit('showSpin', {
+                            items: spinresult.items_awarded
+                        });
                     }
                     pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 5;
                 }

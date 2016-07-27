@@ -276,7 +276,7 @@ exports.evolvePokemon = function(endpoint, access_token, ltype, pokemon, callbac
         callback(response);
     });
 };
-exports.discardItem = function(endpoint, access_token, ltype, item, count, callback){
+exports.discardItem = async(function(item, count){
     var requests = [
         {
             request_type: "RECYCLE_INVENTORY_ITEM",
@@ -286,12 +286,10 @@ exports.discardItem = function(endpoint, access_token, ltype, item, count, callb
             }, "POGOProtos.Networking.Requests.Messages.RecycleInventoryItemMessage")
         }
     ];
-    this.api_req(endpoint, access_token, requests, ltype, function(data){
-        // console.log(data);
-        var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
-        callback(response);
-    });
-};
+    var data = await(this.api_req(requests));
+    var response = proto.parse(data.returns[0], "POGOProtos.Networking.Responses.GetInventoryResponse");
+    return response;
+});
 exports.catchPokemon = async (function(pokemon, ball){
     var requests = [
         {
