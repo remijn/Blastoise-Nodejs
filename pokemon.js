@@ -49,7 +49,7 @@ exports.api_req = async(function(req, filename){
 
     var buf = proto.serialize(envelop, "POGOProtos.Networking.Envelopes.RequestEnvelope");
 
-    if(typeof filename !== "undefined") fs.writeFileSync('req'+filename, buf);
+    if(typeof filename !== "undefined") fs.writeFileSync('req'+filename+".bin", buf);
 
     var response = await(new Promise(function(resolve, reject){
         try{
@@ -72,7 +72,7 @@ exports.api_req = async(function(req, filename){
                     }else{
 
                     }
-                    if(typeof filename !== "undefined") fs.writeFileSync('res'+filename, buffer);
+                    if(typeof filename !== "undefined") fs.writeFileSync('res'+filename+".bin", buffer);
                     var result = proto.parse(buffer, "POGOProtos.Networking.Envelopes.ResponseEnvelope");
                 }catch(e){
                     if(e.decoded){
