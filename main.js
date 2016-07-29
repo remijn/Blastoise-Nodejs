@@ -27,6 +27,8 @@ var nextspin = {};
 
 var state = "noauth";
 
+var movestate = "catching";
+
 var startlocation = [34.009474, -118.497046];
 
 exports = module.exports = {};
@@ -211,6 +213,7 @@ exports.transferPokemon = async(function(){
 });
 
 exports.doCatch = async(function(){
+    if(movestate == "collecting") return;
     if(catchable.length == 0){
         areaempty = true;
         exports.log("There is nothing to catch");
@@ -274,7 +277,16 @@ exports.doCatch = async(function(){
 
 exports.doSpin = async(function(){
 
-    if(totalballs < 10 || catchable.length == 0){
+    if(totalballs < 20 || catchable.length == 0 || movestate == "collecting"){
+        if(totalballs < 20 && movestate != "collecting"){
+
+            movestate = "collecting";
+            console.log("Switching to collect mode");
+        }
+        if(movestate == "collecting" && totalballs > 49){
+            movestate = "catching";
+            console.log("Switching to catch mode");
+        }
 
         let spin = false;
         var left = 0;
@@ -364,23 +376,28 @@ exports.getBestBall = function(data, pokemon_data){
 
         var pokeBalls, greatBalls, ultraBalls, masterBalls;
         var balls = [];
+        totalballs = 0;
 
         for (var itemi = 0; itemi < data.length; itemi++) {
             switch (data[itemi].item_id) {
                 case "ITEM_POKE_BALL":
                     pokeBalls = data[itemi].count;
+                    totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
                 case "ITEM_GREAT_BALL":
                     greatBalls = data[itemi].count;
+                    totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
                 case "ITEM_ULTRA_BALL":
                     ultraBalls = data[itemi].count;
+                    totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
                 case "ITEM_MASTER_BALL":
                     masterBalls = data[itemi].count;
+                    totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
             }
