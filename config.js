@@ -4,5 +4,7 @@ exports.login_url="https://sso.pokemon.com/sso/login?service=https%3A%2F%2Fsso.p
 // exports.login_url_pokemon ='https://sso.pokemon.com/sso/login?service=https%3A%2F%2Fsso.pokemon.com%2Fsso%2Foauth2.0%2FcallbackAuthorize';
 // exports.login_url_auth_pokemon ='https://sso.pokemon.com/sso/oauth2.0/accessToken';
 exports.max_cp_transfer=1000;
-exports.min_cp_evolve=650;
+exports.min_cp_evolve=800;
 exports.pushbullet_key='';
+exports.telegram = true;
+exports.telegram_token = "255750933:AAHnwnxeMu5u8fs_s3YvTHp0V0o9EyuHgbg";

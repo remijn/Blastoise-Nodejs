@@ -21,8 +21,13 @@ var pokeBalls = {
     3: 'ITEM_ULTRA_BALL',
     4: 'ITEM_MASTER_BALL'
 };
+var totalballs = 0;
+
+var nextspin = {};
 
 var state = "noauth";
+
+var startlocation = [34.009474, -118.497046];
 
 exports = module.exports = {};
 
@@ -31,7 +36,8 @@ exports.log = function(message){
 };
 
 exports.init = async(function(){
-    this.setLocation(48.872610, 2.776761);
+    // this.setLocation(48.872610, 2.776761); //Disneyland paris
+    this.setLocation(startlocation); //Santa monica pier
     web.init();
     var logindata = await(exports.initlogin());
     state = "auth";
@@ -45,11 +51,17 @@ exports.init = async(function(){
 
 exports.doLoop = async(function(){
     while(state == "connected"){
+        var areaempty = false;
         exports.log("Heartbeat");
         await(exports.doHeartbeat()); //Hearbeat done
         await(exports.doCatch());
         await(exports.doSpin());
         await(exports.discardItems());
+        await(exports.transferPokemon())
+        if(areaempty == true){
+            exports.log ("area empty, returning to start");
+            exports.setLocation(startlocation);
+        }
     }
 });
 
@@ -86,6 +98,7 @@ exports.initlogin = async(function(){
 
 exports.doHeartbeat = async(function(){
     var hearbeatdata = await(pokemon.Heartbeat());
+    if(hearbeatdata instanceof Error) return hearbeatdata;
     var mapdata = hearbeatdata.map_cells;
 
     nearbypokemon = [];
@@ -112,17 +125,17 @@ exports.doHeartbeat = async(function(){
             var fort = forts[q];
             if(fort.type == "CHECKPOINT"){
                 pokestops.push(fort);
-                // //Pokestop
-                // var has = false;
-                // for(var j = 0;j<pokestops.length;j++){
-                //     if(fort.id == pokestops[j].id){
-                //         has = true;
-                //         break;
-                //     }
-                // }
-                // if(has == false){
-                //     pokestops.push(fort);
-                // }
+                //Pokestop
+                var has = false;
+                for(var j = 0;j<pokestops.length;j++){
+                    if(fort.id == pokestops[j].id){
+                        has = true;
+                        break;
+                    }
+                }
+                if(has == false){
+                    pokestops.push(fort);
+                }
 
             }else{
                 //Gym
@@ -133,7 +146,8 @@ exports.doHeartbeat = async(function(){
     pokestops = geolib.orderByDistance(exports.getLocation(), pokestops);
 
     catchable = geolib.orderByDistance(exports.getLocation(), catchable);
-    return;
+
+    web.rtc.event.emit('displayPokemon', catchable);
 });
 
 exports.discardItems = async(function(){
@@ -165,12 +179,44 @@ exports.discardItems = async(function(){
     }
 });
 
+exports.transferPokemon = async(function(){
+    var pokemons = await(pokemon.getPokemons());
+    var byPokemon = {};
+    for(var i=0;i<pokemons.length;i++){
+        if(typeof(byPokemon[pokemons[i].pokemon_id]) === "undefined") byPokemon[pokemons[i].pokemon_id] = [];
+        byPokemon[pokemons[i].pokemon_id].push(pokemons[i])
+    }
+    for(var type in byPokemon){
+        if(byPokemon.hasOwnProperty(type)){
+            byPokemon[type].sort(function (a, b) {
+                if (a.cp > b.cp) {
+                    return -1;
+                }
+                if (a.cp < b.cp) {
+                    return 1;
+                }
+                // a must be equal to b
+                return 0;
+            });
+            for(var i=1;i<byPokemon[type].length;i++){
+                if(byPokemon[type][i].cp < config.max_cp_transfer)
+                {
+                    console.log("Transfering " + byPokemon[type][i].cp + "CP " + byPokemon[type][i].pokemon_id);
+                    var data = await(pokemon.transferPokemon(byPokemon[type][i]));
+                    if(data.result != "SUCCESS") console.log(data);
+                }
+            }
+        }
+    }
+});
+
 exports.doCatch = async(function(){
     if(catchable.length == 0){
+        areaempty = true;
         exports.log("There is nothing to catch");
         return;
     }
-    catchable = geolib.orderByDistance(this.getLocation(), catchable);
+    catchable = geolib.orderByDistance(geolib.getCenter([this.getLocation(), {latitude: startlocation[0], longitude: startlocation[1]}]), catchable);
     let tocatch = catchable[0];
     if(typeof tocatch == "undefined") return;
     //Move to catch location
@@ -185,90 +231,125 @@ exports.doCatch = async(function(){
     //Get Best ball
     let items = await(pokemon.getItems());
     let ball = exports.getBestBall(items, encounter);
-    if(typeof ball === "undefined"){
+    if(ball == null){
         this.log("No Pokeballs!");
         return;
     }
+    var berries = 0;
+    for (var itemi = 0; itemi < items.length; itemi++) {
+        if(items[itemi].item_id == "ITEM_RAZZ_BERRY") {
+            berries = items[itemi].count;
+        }
+    }
+    if(berries > 0 && encounter.wild_pokemon.pokemon_data.cp > 400){
+        var berryresult = await(pokemon.useBerry(encounter));
+        console.log(berryresult);
+    }
+
     var catchresult = await(pokemon.catchPokemon(encounter, ball));
     this.log("THROW BALL: " + pokeBalls[ball]);
     if(catchresult.status == "CATCH_SUCCESS"){
         this.log('Caught: ' +encounter.wild_pokemon.pokemon_data.cp+ " CP " + encounter.wild_pokemon.pokemon_data.pokemon_id + " got " + catchresult.capture_award.xp +"xp " + catchresult.capture_award.candy[0] +"candy " +catchresult.capture_award.stardust[0] +"dust ");
-        var podedexentry = pokedex.getPokemon(encounter.wild_pokemon.pokemon_data.pokemon_id);
-        web.rtc.event.emit('showCatch', {
-            name: podedexentry.name,
-            id: podedexentry.id,
-            cp: encounter.wild_pokemon.pokemon_data.cp,
-
-        });
+        var pokedexentry = pokedex.getPokemon(encounter.wild_pokemon.pokemon_data.pokemon_id);
+        if(typeof pokedexentry === "undefined"){
+            web.rtc.event.emit('showCatch', {
+                name: pokedexentry.name,
+                id: pokedexentry.id,
+                cp: encounter.wild_pokemon.pokemon_data.cp
+            });
+        }else{
+            web.rtc.event.emit('showCatch', {
+                name: pokedexentry.name,
+                id: pokedexentry.id,
+                cp: encounter.wild_pokemon.pokemon_data.cp
+            });
+        }
     }else if(typeof catchresult.status =="undefined") {
         this.log('FAILED: No result from catch')
     }else{
         this.log(catchresult.status + ': ' + encounter.wild_pokemon.pokemon_data.cp+ " CP " + encounter.wild_pokemon.pokemon_data.pokemon_id);
     }
-
+    web.rtc.event.emit('displayPokemon', catchable);
 });
 
 exports.doSpin = async(function(){
-    let spin = false;
-    var left = 0;
-    //Spin Pokestops
-    for(var stop=0;stop<pokestops.length;stop++){
-        let pokestop = pokestops[stop];
-        if(typeof(pokestop.cooldown_complete_timestamp_ms) === "undefined" || pokestop.cooldown_complete_timestamp_ms < Date.now()){
-            left++;
-            if(spin == false){
-                //Spin pokestop
-                exports.setLocation(pokestop.latitude, pokestop.longitude);
-                spin = true;
-                var spinresult = await(pokemon.spinPokestop(pokestop));
-                exports.log("Pokestop: " + spinresult.result);
-                if(spinresult.result == "SUCCESS" || spinresult.result == "INVENTORY_FULL"){
-                    exports.log('recieved ' + JSON.stringify(spinresult.items_awarded));
-                    if(spinresult.items_awarded.length == 0){
-                        pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 1;
-                    }else{
-                        web.rtc.event.emit('showSpin', {
-                            items: spinresult.items_awarded
-                        });
+
+    if(totalballs < 10 || catchable.length == 0){
+
+        let spin = false;
+        var left = 0;
+        pokestops = geolib.orderByDistance(geolib.getCenter([this.getLocation(), {latitude: startlocation[0], longitude: startlocation[1]}]), pokestops);
+        //Spin Pokestops
+        for(var stop=0;stop<pokestops.length;stop++){
+            let pokestop = pokestops[stop];
+            if(typeof nextspin[pokestop.id] === "undefined" || nextspin[pokestop.id] < Date.now()){
+                // if(typeof(pokestop.cooldown_complete_timestamp_ms) === "undefined" || pokestop.cooldown_complete_timestamp_ms < Date.now()){
+                left++;
+                if(spin == false){
+                    //Spin pokestop
+                    exports.setLocation(pokestop.latitude, pokestop.longitude);
+                    spin = true;
+                    var spinresult = await(pokemon.spinPokestop(pokestop));
+                    exports.log("Pokestop: " + spinresult.result);
+                    if(spinresult.result == "SUCCESS" || spinresult.result == "INVENTORY_FULL"){
+                        exports.log('recieved ' + JSON.stringify(spinresult.items_awarded));
+
+                        if(spinresult.items_awarded.length > 0){
+                            web.rtc.event.emit('showSpin', {
+                                items: spinresult.items_awarded
+                            });
+                        }
                     }
-                    pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000 * 5;
-                }
-                if(spinresult.result == "IN_COOLDOWN_PERIOD"){
-                    pokestop.cooldown_complete_timestamp_ms = Date.now() + 60000*3; //Try again in a minute
+                    if(spinresult.result == "SUCCESS" && spinresult.items_awarded.length == 0) nextspin[pokestop.id] = Date.now() + (2*60*1000); //Wait 2 minutes for next spin
+                    else nextspin[pokestop.id] = Date.now() + (6*60*1000); //Wait 6 minutes for next spin
+
+                    // nextspin[pokestop.id] = Date.now() + (6*60*1000); //Wait 6 minutes for next spin
                 }
             }
         }
-    }
 
-    console.log('stops left to do ' + left);
+        console.log('stops left to do ' + left);
+        if(left < 1) {
+            areaempty = true;
+        }
+    }
 });
 
 exports.setLocation = function(latitude, longitude){
-    var distance = geolib.getDistance({latitude: latitude, longitude: longitude},pokemon.coords);
-    // console.log('moving ' + distance + " meters");
-    pokemon.coords.latitude = latitude;
-    pokemon.coords.longitude = longitude;
-    web.rtc.event.emit('setLocation', pokemon.coords);
+    if(typeof latitude === "object"){
+        pokemon.coords.latitude = latitude[0];
+        pokemon.coords.longitude = latitude[1];
+        web.rtc.event.emit('setLocation', pokemon.coords);
+    }else{
+        pokemon.coords.latitude = latitude;
+        pokemon.coords.longitude = longitude;
+        web.rtc.event.emit('setLocation', pokemon.coords);
+    }
 };
 exports.getLocation = function(){
     return pokemon.coords;
 };
 exports.getBalls = function(data){
     var balls = {};
+    totalballs = 0;
 
     for (var itemi = 0; itemi < data.length; itemi++) {
         switch (data[itemi].item_id) {
             case "ITEM_POKE_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
+                totalballs += data[itemi].count;
                 break;
             case "ITEM_GREAT_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
+                totalballs += data[itemi].count;
                 break;
             case "ITEM_ULTRA_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
+                totalballs += data[itemi].count;
                 break;
             case "ITEM_MASTER_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
+                totalballs += data[itemi].count;
                 break;
         }
     }
@@ -307,25 +388,31 @@ exports.getBestBall = function(data, pokemon_data){
 
         var pokemon_cp = pokemon_data.wild_pokemon.pokemon_data.cp;
 
-        if (masterBalls > 0 && pokemon_cp >= 2000) {
-            return 4;
-        } else if (ultraBalls > 0 && pokemon_cp >= 2000) {
-            return 3;
-        } else if (greatBalls > 0 && pokemon_cp >= 2000) {
-            return 2;
-        }
+        if(pokemon_cp >= 2000 && masterBalls > 0) return 4;
+        if(pokemon_cp >= 1000 && ultraBalls > 0) return 3;
+        if(pokemon_cp >= 200 && greatBalls > 0) return 2;
+        if(pokeBalls > 0) return 1;
+        return null;
 
-        if (ultraBalls > 0 && pokemon_cp >= 1000) {
-            return 3;
-        } else if (greatBalls > 0 && pokemon_cp >= 1000) {
-            return 2;
-        }
-
-        if (greatBalls > 0 && pokemon_cp >= 400) {
-            return 2;
-        }
-
-        return 1;
+        // if (masterBalls > 0 && pokemon_cp >= 2000) {
+        //     return 4;
+        // } else if (ultraBalls > 0 && pokemon_cp >= 2000) {
+        //     return 3;
+        // } else if (greatBalls > 0 && pokemon_cp >= 2000) {
+        //     return 2;
+        // }
+        //
+        // if (ultraBalls > 0 && pokemon_cp >= 1000) {
+        //     return 3;
+        // } else if (greatBalls > 0 && pokemon_cp >= 1000) {
+        //     return 2;
+        // }
+        //
+        // if (greatBalls > 0 && pokemon_cp >= 200) {
+        //     return 2;
+        // }
+        //
+        // return 1;
     }
 };
 

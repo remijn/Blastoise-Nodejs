@@ -745,7 +745,7 @@
       {
          "id":29,
          "num":"029",
-         "name":"Nidoran ♀ (Female)",
+         "name":"Nidoran Female ♀",
          "img":"http://www.serebii.net/pokemongo/pokemon/029.png",
          "type":"Poison",
          "height":"0.41 m",
@@ -833,12 +833,12 @@
       {
          "id":32,
          "num":"032",
-         "name":"Nidoran ♂ (Male)",
+         "name":"Nidoran Male ♂",
          "img":"http://www.serebii.net/pokemongo/pokemon/032.png",
          "type":"Poison",
          "height":"0.51 m",
          "weight":"9.0 kg",
-         "candy":"25 Nidoran ♂ (Male) Candy",
+         "candy":"25 Nidoran Male ♂ Candy",
          "egg":"5 km",
          "multipliers":[
             1.64,

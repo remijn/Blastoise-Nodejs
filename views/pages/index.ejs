@@ -74,6 +74,7 @@
         });
     }
     var playerposition;
+    var pokemarkers = [];
     //Networking
     var io = io();
 
@@ -115,11 +116,22 @@
         }
         new Notification(o);
     });
-
-
-
-
-
+    io.on('displayPokemon', function(data){
+        console.log('displayPokemon');
+        for(p in pokemarkers){
+            pokemarkers[p].setMap(null);
+        }
+        pokemarkers = [];
+        for(p in data){
+            let marker = new google.maps.Marker({
+                position: data[p].loc,
+                map: map,
+                title: data[p].name,
+                icon: "/pixel_icons/"+data[p].id+".png"
+            });
+            pokemarkers.push(marker);
+        }
+    });
     function Notification(o){
         var self = this;
         this.element = tmpl('notification', o);

@@ -1,5 +1,5 @@
 
-¯
+÷
 messages.proto"c
 	Encounter
 encounter_id (
@@ -13,4 +13,8 @@
 spawn_point_guid (	
 hit_pokemon (
 spin_modifier (
-normalized_hit_position (
+normalized_hit_position ("F
+Berry
+item_id (
+encounter_id (
+spawn_point_id (	

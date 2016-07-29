@@ -17,6 +17,7 @@
     "express": "^4.6.1",
     "geohash": "*",
     "socket.io": "*",
-    "asyncawait": "*"
+    "asyncawait": "*",
+    "node-telegram-bot-api": "*"
   }
 }
