@@ -4,3 +4,5 @@ Python/
 apk/
 tokens.json
 .idea/
+*.heapsnapshot
+telegram.json
