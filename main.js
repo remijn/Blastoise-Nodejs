@@ -9,7 +9,10 @@ var pokemon = require('./pokemon');
 var request = require('request');
 var geolib = require('geolib');
 
+var cluster = require('cluster');
+
 var nearbypokemon = [];
+var wildpokemon = [];
 var catchable = [];
 var pokestops = [];
 var gyms = [];
@@ -29,7 +32,10 @@ var state = "noauth";
 
 var movestate = "catching";
 
-var startlocation = [34.009474, -118.497046];
+// var startlocation = [34.009474, -118.497046]; //Santa monica pier
+// var startlocation = [48.872610, 2.776761]; //Disneyland Paris
+var startlocation = [51.503480, -0.152062]; // Hyde parke london
+
 
 exports = module.exports = {};
 
@@ -38,8 +44,7 @@ exports.log = function(message){
 };
 
 exports.init = async(function(){
-    // this.setLocation(48.872610, 2.776761); //Disneyland paris
-    this.setLocation(startlocation); //Santa monica pier
+    this.setLocation(startlocation);
     web.init();
     var logindata = await(exports.initlogin());
     state = "auth";
@@ -48,24 +53,34 @@ exports.init = async(function(){
     await(pokemon.init());
     state = "connected";
     this.log("Starting hearbeat loop");
-    setTimeout(await(this.doLoop), 0);
+    setTimeout(this.doHearbeatLoop, 0);
+    setTimeout(this.doLoop, 0);
 });
 
-exports.doLoop = async(function(){
-    while(state == "connected"){
-        var areaempty = false;
-        exports.log("Heartbeat");
-        await(exports.doHeartbeat()); //Hearbeat done
-        await(exports.doCatch());
-        await(exports.doSpin());
-        await(exports.discardItems());
-        await(exports.transferPokemon())
-        if(areaempty == true){
-            exports.log ("area empty, returning to start");
-            exports.setLocation(startlocation);
+exports.doLoop = function(){
+    setTimeout(async(function(){
+        while(state == "connected"){
+            var areaempty = false;
+            await(exports.doCatch());
+            await(exports.doSpin());
+            await(exports.discardItems());
+            await(exports.transferPokemon());
+            if(areaempty == true){
+                exports.log ("area empty, returning to start");
+                await(exports.walkLocation(startlocation));
+            }
         }
-    }
-});
+    }), 1);
+
+};
+exports.doHearbeatLoop = function(){
+    setTimeout(async(function(){
+        while (state == "connected") {
+            exports.log("Heartbeat");
+            await(exports.doHeartbeat()); //Hearbeat done
+        }
+    }), 1);
+};
 
 exports.initlogin = async(function(){
     if(login.hasSession() == "google"){
@@ -98,19 +113,39 @@ exports.initlogin = async(function(){
     }
 });
 
-exports.doHeartbeat = async(function(){
+var lastHearbeat;
+
+exports.doHeartbeat = async(function() {
+    if(typeof lastHearbeat == "undefined" || Date.now() - lastHearbeat < config.hearbeatDelay){
+        console.log("Running hearbeat now");
+        return await(exports.doHeartbeatNoThrottle());
+    }else{
+        await(new Promise(function(resolve, reject){
+            let time = (config.hearbeatDelay*1000) - (Date.now() - lastHearbeat);
+            setTimeout(function(){
+                resolve();
+            }, time);
+            console.log("Wainting: " + time + "ms for hearbeat");
+        }));
+        return await(exports.doHeartbeatNoThrottle());
+    }
+
+});
+exports.doHeartbeatNoThrottle = async(function(){
+    lastHearbeat = Date.now();
     var hearbeatdata = await(pokemon.Heartbeat());
     if(hearbeatdata instanceof Error) return hearbeatdata;
     var mapdata = hearbeatdata.map_cells;
 
     nearbypokemon = [];
     catchable = [];
+    wildpokemon = [];
     pokestops = [];
 
     for(var i=0;i<mapdata.length;i++){
         //Handle wild pokemon <2 steps
         if(mapdata[i].wild_pokemons.length > 0){
-            nearbypokemon = nearbypokemon.concat(mapdata[i].wild_pokemons);
+            wildpokemon = wildpokemon.concat(mapdata[i].wild_pokemons);
         }
         //Handle catchable <1 step
         if(mapdata[i].catchable_pokemons.length > 0){
@@ -222,22 +257,21 @@ exports.doCatch = async(function(){
     catchable = geolib.orderByDistance(geolib.getCenter([this.getLocation(), {latitude: startlocation[0], longitude: startlocation[1]}]), catchable);
     let tocatch = catchable[0];
     if(typeof tocatch == "undefined") return;
+    await(exports.walkLocation(tocatch));
     //Move to catch location
-    this.setLocation(tocatch.latitude, tocatch.longitude);
     //Do Encounter
     let encounter = await(pokemon.encounter(tocatch));
     if(encounter.status != "ENCOUNTER_SUCCESS") return;
-
-    //Move to encounter location
-    this.setLocation(tocatch.latitude, tocatch.longitude);
 
     //Get Best ball
     let items = await(pokemon.getItems());
     let ball = exports.getBestBall(items, encounter);
     if(ball == null){
         this.log("No Pokeballs!");
+        movestate = "collecting";
         return;
     }
+    if(totalballs < 20) movestate = "collecting";
     var berries = 0;
     for (var itemi = 0; itemi < items.length; itemi++) {
         if(items[itemi].item_id == "ITEM_RAZZ_BERRY") {
@@ -276,6 +310,9 @@ exports.doCatch = async(function(){
 });
 
 exports.doSpin = async(function(){
+    //Get totalballs
+    var items = await(pokemon.getItems());
+    exports.getBalls(items);
 
     if(totalballs < 20 || catchable.length == 0 || movestate == "collecting"){
         if(totalballs < 20 && movestate != "collecting"){
@@ -290,7 +327,7 @@ exports.doSpin = async(function(){
 
         let spin = false;
         var left = 0;
-        pokestops = geolib.orderByDistance(geolib.getCenter([this.getLocation(), {latitude: startlocation[0], longitude: startlocation[1]}]), pokestops);
+        pokestops = geolib.orderByDistance(geolib.getCenter([exports.getLocation(), {latitude: startlocation[0], longitude: startlocation[1]}]), pokestops);
         //Spin Pokestops
         for(var stop=0;stop<pokestops.length;stop++){
             let pokestop = pokestops[stop];
@@ -299,7 +336,8 @@ exports.doSpin = async(function(){
                 left++;
                 if(spin == false){
                     //Spin pokestop
-                    exports.setLocation(pokestop.latitude, pokestop.longitude);
+
+                    await(exports.walkLocation(pokestop));
                     spin = true;
                     var spinresult = await(pokemon.spinPokestop(pokestop));
                     exports.log("Pokestop: " + spinresult.result);
@@ -313,7 +351,7 @@ exports.doSpin = async(function(){
                         }
                     }
                     if(spinresult.result == "SUCCESS" && spinresult.items_awarded.length == 0) nextspin[pokestop.id] = Date.now() + (2*60*1000); //Wait 2 minutes for next spin
-                    else nextspin[pokestop.id] = Date.now() + (6*60*1000); //Wait 6 minutes for next spin
+                    else nextspin[pokestop.id] = Date.now() + (7*60*1000); //Wait 6 minutes for next spin
 
                     // nextspin[pokestop.id] = Date.now() + (6*60*1000); //Wait 6 minutes for next spin
                 }
@@ -327,11 +365,39 @@ exports.doSpin = async(function(){
     }
 });
 
+exports.walkLocation = async(function(loc){
+    await(new Promise(function(resolve, reject){
+        let distance = geolib.getDistance(exports.getLocation(), loc);
+        if(distance < config.radius) resolve();
+
+        let lazypoint = geolib.computeDestinationPoint(loc, config.radius, geolib.getBearing(loc, exports.getLocation()));
+
+        distance = geolib.getDistance(exports.getLocation(), lazypoint);
+        let speed = config.moveSpeed; // km/h
+        let mps = speed * 1000 / 60 / 60; // meter/second
+        let time = distance / mps;
+        setTimeout(function(){
+            exports.setLocation(lazypoint);
+            resolve();
+        }, time*1000);
+        console.log("Walking: " + time + "sec");
+    }));
+    return loc;
+});
+
 exports.setLocation = function(latitude, longitude){
     if(typeof latitude === "object"){
-        pokemon.coords.latitude = latitude[0];
-        pokemon.coords.longitude = latitude[1];
+        if(typeof latitude.latitude != "undefined"){
+            pokemon.coords.latitude = latitude.latitude;
+            pokemon.coords.longitude = latitude.longitude;
+        }else{
+            pokemon.coords.latitude = latitude[0];
+            pokemon.coords.longitude = latitude[1];
+        }
         web.rtc.event.emit('setLocation', pokemon.coords);
+    }else if(typeof latitude === "undefined"){
+        console.error('what the?');
+        return;
     }else{
         pokemon.coords.latitude = latitude;
         pokemon.coords.longitude = longitude;
@@ -357,11 +423,11 @@ exports.getBalls = function(data){
                 break;
             case "ITEM_ULTRA_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
-                totalballs += data[itemi].count;
+                // totalballs += data[itemi].count;
                 break;
             case "ITEM_MASTER_BALL":
                 balls[data[itemi].item_id] = data[itemi].count;
-                totalballs += data[itemi].count;
+                // totalballs += data[itemi].count;
                 break;
         }
     }
@@ -392,12 +458,12 @@ exports.getBestBall = function(data, pokemon_data){
                     break;
                 case "ITEM_ULTRA_BALL":
                     ultraBalls = data[itemi].count;
-                    totalballs += data[itemi].count;
+                    // totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
                 case "ITEM_MASTER_BALL":
                     masterBalls = data[itemi].count;
-                    totalballs += data[itemi].count;
+                    // totalballs += data[itemi].count;
                     balls.push(data[itemi]);
                     break;
             }
@@ -406,7 +472,7 @@ exports.getBestBall = function(data, pokemon_data){
         var pokemon_cp = pokemon_data.wild_pokemon.pokemon_data.cp;
 
         if(pokemon_cp >= 2000 && masterBalls > 0) return 4;
-        if(pokemon_cp >= 1000 && ultraBalls > 0) return 3;
+        if(pokemon_cp >= 500 && ultraBalls > 0) return 3;
         if(pokemon_cp >= 200 && greatBalls > 0) return 2;
         if(pokeBalls > 0) return 1;
         return null;
@@ -434,3 +500,30 @@ exports.getBestBall = function(data, pokemon_data){
 };
 
 exports.init();
+setTimeout(function() {
+    console.log('restart');
+    process.exit(0);
+    // console.log('Killing worker');
+}, 60 * 60 * 1000);
+// }, 20*1000);
+
+// if(cluster.isMaster){
+//     var worker = cluster.fork();
+//     cluster.on('exit', function(worker, code, signal){
+//         console.log('Restarting worker');
+//         worker = cluster.fork();
+//     });
+//     process.on('SIGINT', function(){
+//         console.log('Shutting down workers');
+//         worker.kill();
+//     });
+// }else{
+//     exports.init();
+//     console.log('Starting worker');
+//     setTimeout(function() {
+//         process.exit(0);
+//         console.log('Killing worker');
+//         // }, 60 * 60 * 1000);
+//     }, 20*1000);
+// }
+// console.log('Started Master');

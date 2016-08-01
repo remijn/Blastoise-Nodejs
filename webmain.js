@@ -29,6 +29,6 @@ exports.init = function(){
         console.log('User disconnected')
     });
 
-    http.listen(3000);
-    console.log('3000 is the magic port');
+    http.listen(8000);
+    console.log('8000 is the magic port');
 };

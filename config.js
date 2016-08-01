@@ -6,5 +6,8 @@ exports.login_url="https://sso.pokemon.com/sso/login?service=https%3A%2F%2Fsso.p
 exports.max_cp_transfer=1000;
 exports.min_cp_evolve=800;
 exports.pushbullet_key='';
-exports.telegram = true;
-exports.telegram_token = "255750933:AAHnwnxeMu5u8fs_s3YvTHp0V0o9EyuHgbg";
+exports.telegram = false;
+exports.telegram_token = "";
+exports.moveSpeed = 100; //km/h
+exports.radius = 40; //meters
+exports.hearbeatDelay = 4;

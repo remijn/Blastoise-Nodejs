@@ -68,7 +68,7 @@ exports.api_req = async(function(req, filename){
                 try{
                     if(buffer.toString().indexOf('Server Error') != -1){
                         // console.error("Server Error");
-                        throw new Error("Server Error");
+                        resolve( new Error("Server Error"));
                     }else{
 
                     }
@@ -324,7 +324,7 @@ exports.useBerry = async(function(pokemon){
         {
             request_type: "USE_ITEM_CAPTURE",
             request_message: encounter.serialize({
-                item_id: "ITEM_RAZZ_BERRY",
+                item_id: 701,
                 encounter_id: pokemon.wild_pokemon.encounter_id,
                 spawn_point_id: pokemon.wild_pokemon.spawn_point_id,
             }, "Berry")

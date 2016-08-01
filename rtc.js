@@ -43,11 +43,19 @@ exports.init = function(socketio){
         self.event.emit('disconnect', socket);
     });
     this.event.on('setLocation', function(data){
-        loc = {
-            lat: data.latitude,
-            lng: data.longitude
-        };
-        io.emit('setLocation', loc);
+        if(loc == "undefined"){
+            loc = {
+                lat: data.latitude,
+                lng: data.longitude
+            };
+            io.emit('setInitialLocation', loc);
+        }else{
+            loc = {
+                lat: data.latitude,
+                lng: data.longitude
+            };
+            io.emit('setLocation', loc);
+        }
     });
     this.event.on('showCatch', function(data){
         io.emit('showCatch', data);
@@ -60,7 +68,7 @@ exports.init = function(socketio){
             items.push(data.items[item].item_id)
         }
         io.emit('showSpin', items);
-        if(config.telegram) bot.sendMessage(telegram.chatid, "Spin \n" + JSON.stringify(data));
+        // if(config.telegram) bot.sendMessage(telegram.chatid, "Spin \n" + JSON.stringify(data));
     });
 
     var lastempty = false;

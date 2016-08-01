@@ -18,6 +18,7 @@
     "geohash": "*",
     "socket.io": "*",
     "asyncawait": "*",
-    "node-telegram-bot-api": "*"
+    "node-telegram-bot-api": "*",
+    "forever-monitor": "*"
   }
 }

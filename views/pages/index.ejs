@@ -90,7 +90,12 @@
             position: loc,
             map: map,
             title: "Player Position",
-            icon: 'ash-ketchum.png'
+            icon: {
+                url: "ash-ketchum.png",
+                scaledSize: new google.maps.Size(25, 25), // scaled size
+                origin: new google.maps.Point(0,0), // origin
+                anchor: new google.maps.Point(0, 0) // anchor
+            }
         });
         //TODO Set view to coordinates
     })
@@ -123,11 +128,17 @@
         }
         pokemarkers = [];
         for(p in data){
+            let image = {
+                url: "/pixel_icons/"+data[p].id+".png",
+                scaledSize: new google.maps.Size(30, 30), // scaled size
+                origin: new google.maps.Point(0,0), // origin
+                anchor: new google.maps.Point(0, 0) // anchor
+            }
             let marker = new google.maps.Marker({
                 position: data[p].loc,
                 map: map,
                 title: data[p].name,
-                icon: "/pixel_icons/"+data[p].id+".png"
+                icon: image
             });
             pokemarkers.push(marker);
         }
