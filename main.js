@@ -206,6 +206,10 @@ exports.discardItems = async(function(){
                     if(items[itemi+1].item_id == "ITEM_MAX_POTION")
                         discard = item.count;
                     break;
+                case("ITEM_REVIVE"):
+                    if(items[itemi+1].item_id == "ITEM_MAX_REVIVE")
+                        discard = item.count;
+                    break;
             }
         }
 
